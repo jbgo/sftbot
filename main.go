@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/jbgo/sftbot/command"
+	"github.com/mitchellh/cli"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
+
+const VERSION = "0.1.0"
 
 const PUBLIC_API_URL = "https://poloniex.com/public"
 
@@ -65,9 +69,29 @@ func candlesticks() {
 		panic(err)
 	}
 
-	spew.Dump(candlesticks)
+	fmt.Println(string(body))
+}
+
+func usage(subCommand string) {
+	log.Printf("TODO: usage for %s", subCommand)
+	os.Exit(1)
 }
 
 func main() {
-	candlesticks()
+	c := cli.NewCLI("sftbot", VERSION)
+
+	c.Args = os.Args[1:]
+
+	c.Commands = map[string]cli.CommandFactory{
+		"candlesticks":        command.Candlesticks,
+		"candlesticks get":    command.CandlesticksGet,
+		"candlesticks import": command.CandlesticksImport,
+	}
+
+	exitStatus, err := c.Run()
+	if err != nil {
+		log.Println(err)
+	}
+
+	os.Exit(exitStatus)
 }
