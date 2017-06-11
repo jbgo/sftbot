@@ -1,5 +1,11 @@
 package command
 
+import (
+	"fmt"
+	"github.com/jbgo/sftbot/candlesticks"
+	"log"
+)
+
 type CandlesticksGetCommand struct {
 }
 
@@ -20,5 +26,14 @@ Options:
 }
 
 func (c *CandlesticksGetCommand) Run(args []string) int {
+	data, err := candlesticks.Get()
+
+	if err != nil {
+		log.Fatal(err)
+		return 1
+	}
+
+	fmt.Println(data)
+
 	return 0
 }
