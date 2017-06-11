@@ -11,15 +11,14 @@ import (
 const PUBLIC_API_URL = "https://poloniex.com/public"
 
 type ChartDataParams struct {
-	command      string
-	currencyPair string
-	start        uint
-	end          uint
-	period       uint
+	CurrencyPair string
+	Start        int64
+	End          int64
+	Period       int64
 }
 
 type Candlestick struct {
-	Date            uint64
+	Date            int64
 	High            float64
 	Low             float64
 	Open            float64
@@ -32,37 +31,35 @@ type Candlestick struct {
 func (p *ChartDataParams) ToQueryString() string {
 	return fmt.Sprintf(
 		"command=%s&currencyPair=%s&start=%d&end=%d&period=%d",
-		p.command,
-		p.currencyPair,
-		p.start,
-		p.end,
-		p.period)
+		"returnChartData",
+		p.CurrencyPair,
+		p.Start,
+		p.End,
+		p.Period)
 }
 
-func Get() (string, error) {
-	params := ChartDataParams{"returnChartData", "BTC_XRP", 1497033851, 1497120251, 1800}
+func GetChartData(params *ChartDataParams) (*[]Candlestick, error) {
+	var sticks []Candlestick
 
 	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
 		log.Panic("request failed:", resp.Status)
+		return nil, fmt.Errorf("request failed: %s", resp.Status)
 	}
 
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	log.Printf("%d %s GET %s", len(body), resp.Status, url)
-
-	candlesticks := make([]Candlestick, 24)
-	err = json.Unmarshal(body, &candlesticks)
+	err = json.Unmarshal(body, &sticks)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(body), nil
+	return &sticks, nil
 }
