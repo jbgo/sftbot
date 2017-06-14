@@ -3,6 +3,7 @@ package candlesticks
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jbgo/sftbot/data"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -17,17 +18,6 @@ type ChartDataParams struct {
 	Period       int64
 }
 
-type Candlestick struct {
-	Date            int64
-	High            float64
-	Low             float64
-	Open            float64
-	Close           float64
-	Volume          float64
-	QuoteVolume     float64
-	WeightedAverage float64
-}
-
 func (p *ChartDataParams) ToQueryString() string {
 	return fmt.Sprintf(
 		"command=%s&currencyPair=%s&start=%d&end=%d&period=%d",
@@ -38,8 +28,8 @@ func (p *ChartDataParams) ToQueryString() string {
 		p.Period)
 }
 
-func GetChartData(params *ChartDataParams) (*[]Candlestick, error) {
-	var sticks []Candlestick
+func GetChartData(params *ChartDataParams) (*[]data.Candlestick, error) {
+	var sticks []data.Candlestick
 
 	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
 

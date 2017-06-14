@@ -75,6 +75,25 @@ func (db *Store) Write(bucketName string, key interface{}, value interface{}) er
 	})
 }
 
+func (db *Store) ForEachPeriod(currencyPair string, callback func(stick *Candlestick)) error {
+	return db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("candlesticks." + currencyPair))
+
+		return b.ForEach(func(k, v []byte) error {
+			var stick Candlestick
+
+			loopErr := json.Unmarshal(v, &stick)
+			if loopErr != nil {
+				return loopErr
+			}
+
+			callback(&stick)
+
+			return nil
+		})
+	})
+}
+
 func EncodeKey(data interface{}) []byte {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, data)
