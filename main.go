@@ -19,6 +19,7 @@ func main() {
 		"accounts":            command.Accounts,
 		"candlesticks":        command.Candlesticks,
 		"candlesticks get":    command.CandlesticksGet,
+		"candlesticks list":   command.CandlesticksList,
 		"candlesticks import": command.CandlesticksImport,
 	}
 

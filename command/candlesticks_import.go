@@ -1,9 +1,10 @@
 package command
 
 import (
-	//"github.com/jbgo/sftbot/candlesticks"
+	"github.com/jbgo/sftbot/candlesticks"
 	"github.com/jbgo/sftbot/data"
 	"log"
+	"time"
 )
 
 type CandlesticksImportCommand struct {
@@ -48,12 +49,26 @@ func (c *CandlesticksImportCommand) Run(args []string) int {
 
 	defer db.Close()
 
-	//db.Candlesticks.Put("BTC_XRP", &candlesticks)
-	// Open database
-	// Create buckets (if not exist)
-	// loop {
-	//    query API
-	//    write data
-	// }
+	endTime := time.Now().Unix()
+	startTime := endTime - (60 * 60 * 24 * 1)
+
+	params := candlesticks.ChartDataParams{
+		CurrencyPair: "BTC_XRP",
+		Start:        startTime,
+		End:          endTime,
+		Period:       300,
+	}
+
+	candlesticks, err := candlesticks.GetChartData(&params)
+
+	for _, stick := range *candlesticks {
+		err = db.Write("candlesticks.BTC_XRP", stick.Date, stick)
+
+		if err != nil {
+			log.Println(err)
+			return 1
+		}
+	}
+
 	return 0
 }

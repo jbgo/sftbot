@@ -21,6 +21,10 @@ func CandlesticksGet() (cli.Command, error) {
 	return &CandlesticksGetCommand{}, nil
 }
 
+func CandlesticksList() (cli.Command, error) {
+	return &CandlesticksListCommand{}, nil
+}
+
 func CandlesticksImport() (cli.Command, error) {
 	return &CandlesticksImportCommand{}, nil
 }
