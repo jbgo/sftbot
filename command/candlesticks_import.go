@@ -1,5 +1,11 @@
 package command
 
+import (
+	//"github.com/jbgo/sftbot/candlesticks"
+	"github.com/jbgo/sftbot/data"
+	"log"
+)
+
 type CandlesticksImportCommand struct {
 }
 
@@ -33,5 +39,21 @@ Options:
 }
 
 func (c *CandlesticksImportCommand) Run(args []string) int {
+	db, err := data.OpenDB()
+
+	if err != nil {
+		log.Println(err)
+		return 1
+	}
+
+	defer db.Close()
+
+	//db.Candlesticks.Put("BTC_XRP", &candlesticks)
+	// Open database
+	// Create buckets (if not exist)
+	// loop {
+	//    query API
+	//    write data
+	// }
 	return 0
 }

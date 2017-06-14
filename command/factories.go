@@ -9,6 +9,10 @@ func formatHelpText(helpText string) string {
 	return strings.TrimSpace(helpText)
 }
 
+func Accounts() (cli.Command, error) {
+	return &AccountsCommand{}, nil
+}
+
 func Candlesticks() (cli.Command, error) {
 	return &CandlesticksCommand{}, nil
 }
