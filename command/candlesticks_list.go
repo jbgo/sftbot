@@ -1,12 +1,16 @@
 package command
 
 import (
+	"bytes"
+	"flag"
 	"fmt"
 	"github.com/jbgo/sftbot/data"
 	"log"
 )
 
 type CandlesticksListCommand struct {
+	Flags        *flag.FlagSet
+	CurrencyPair string
 }
 
 func (c *CandlesticksListCommand) Synopsis() string {
@@ -21,12 +25,34 @@ Usage: sftbot candlesticks get [options]
 
 Options:
 
-  -currenctPair=BTC_XYZ   PLX currency pair for trading data.
-                          Must be in the format BTC_XYZ
-  `)
+  ` + c.FlagOptionsString())
+}
+
+func (c *CandlesticksListCommand) FlagOptionsString() string {
+	c.InitFlags()
+
+	options := ""
+	buf := bytes.NewBufferString(options)
+	c.Flags.SetOutput(buf)
+	c.Flags.PrintDefaults()
+
+	return buf.String()
+}
+
+func (c *CandlesticksListCommand) InitFlags() {
+	c.Flags = flag.NewFlagSet("candlesticks list", flag.PanicOnError)
+	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for trading data. Must be in the format BTC_XYZ")
 }
 
 func (c *CandlesticksListCommand) Run(args []string) int {
+	c.InitFlags()
+	c.Flags.Parse(args)
+
+	if len(c.CurrencyPair) == 0 {
+		fmt.Println(c.Help())
+		return 1
+	}
+
 	db, err := data.OpenDB()
 
 	if err != nil {
@@ -36,7 +62,7 @@ func (c *CandlesticksListCommand) Run(args []string) int {
 
 	defer db.Close()
 
-	err = db.ForEachPeriod("BTC_XRP", func(stick *data.Candlestick) {
+	err = db.ForEachPeriod(c.CurrencyPair, func(stick *data.Candlestick) {
 		fmt.Printf("exchange: %-8s date: %-16d open: %0.9f    close: %0.9f\n", "BTC_XRP", stick.Date, stick.Open, stick.Close)
 	})
 
