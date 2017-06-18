@@ -8,27 +8,27 @@ import (
 	"log"
 )
 
-type CandlesticksListCommand struct {
+type ChartDataListCommand struct {
 	Flags        *flag.FlagSet
 	CurrencyPair string
 }
 
-func (c *CandlesticksListCommand) Synopsis() string {
-	return "list imported candlesticks data"
+func (c *ChartDataListCommand) Synopsis() string {
+	return "list imported PLX chart data"
 }
 
-func (c *CandlesticksListCommand) Help() string {
+func (c *ChartDataListCommand) Help() string {
 	return formatHelpText(`
-Usage: sftbot candlesticks get [options]
+Usage: sftbot chart-data get [options]
 
-  List the imported PLX candlesticks data.
+  List the imported PLX chart data (a.k.a. candlesticks).
 
 Options:
 
   ` + c.FlagOptionsString())
 }
 
-func (c *CandlesticksListCommand) FlagOptionsString() string {
+func (c *ChartDataListCommand) FlagOptionsString() string {
 	c.InitFlags()
 
 	options := ""
@@ -39,12 +39,12 @@ func (c *CandlesticksListCommand) FlagOptionsString() string {
 	return buf.String()
 }
 
-func (c *CandlesticksListCommand) InitFlags() {
-	c.Flags = flag.NewFlagSet("candlesticks list", flag.PanicOnError)
-	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for trading data. Must be in the format BTC_XYZ")
+func (c *ChartDataListCommand) InitFlags() {
+	c.Flags = flag.NewFlagSet("chart-data list", flag.PanicOnError)
+	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
 }
 
-func (c *CandlesticksListCommand) Run(args []string) int {
+func (c *ChartDataListCommand) Run(args []string) int {
 	c.InitFlags()
 	c.Flags.Parse(args)
 

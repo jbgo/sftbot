@@ -1,4 +1,4 @@
-package candlesticks
+package plx
 
 import (
 	"encoding/json"

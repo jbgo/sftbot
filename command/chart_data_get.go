@@ -3,20 +3,20 @@ package command
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jbgo/sftbot/candlesticks"
+	"github.com/jbgo/sftbot/plx"
 	"log"
 	"os"
 	"time"
 )
 
-type CandlesticksGetCommand struct {
+type ChartDataGetCommand struct {
 }
 
-func (c *CandlesticksGetCommand) Synopsis() string {
+func (c *ChartDataGetCommand) Synopsis() string {
 	return "get latest candlesticks data"
 }
 
-func (c *CandlesticksGetCommand) Help() string {
+func (c *ChartDataGetCommand) Help() string {
 	return formatHelpText(`
 Usage: sftbot candlesticks get [options]
 
@@ -28,18 +28,18 @@ Options:
   `)
 }
 
-func (c *CandlesticksGetCommand) Run(args []string) int {
+func (c *ChartDataGetCommand) Run(args []string) int {
 	endTime := time.Now().Unix()
 	startTime := endTime - (60 * 60 * 24 * 1)
 
-	params := candlesticks.ChartDataParams{
+	params := plx.ChartDataParams{
 		CurrencyPair: "BTC_XRP",
 		Start:        startTime,
 		End:          endTime,
 		Period:       300,
 	}
 
-	data, err := candlesticks.GetChartData(&params)
+	data, err := plx.GetChartData(&params)
 
 	if err != nil {
 		log.Println(err)

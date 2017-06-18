@@ -9,22 +9,18 @@ func formatHelpText(helpText string) string {
 	return strings.TrimSpace(helpText)
 }
 
-func Accounts() (cli.Command, error) {
-	return &AccountsCommand{}, nil
+func AccountsList() (cli.Command, error) {
+	return &AccountsListCommand{}, nil
 }
 
-func Candlesticks() (cli.Command, error) {
-	return &CandlesticksCommand{}, nil
+func ChartDataGet() (cli.Command, error) {
+	return &ChartDataGetCommand{}, nil
 }
 
-func CandlesticksGet() (cli.Command, error) {
-	return &CandlesticksGetCommand{}, nil
+func ChartDataList() (cli.Command, error) {
+	return &ChartDataListCommand{}, nil
 }
 
-func CandlesticksList() (cli.Command, error) {
-	return &CandlesticksListCommand{}, nil
-}
-
-func CandlesticksImport() (cli.Command, error) {
-	return &CandlesticksImportCommand{}, nil
+func ChartDataImport() (cli.Command, error) {
+	return &ChartDataImportCommand{}, nil
 }

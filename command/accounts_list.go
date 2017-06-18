@@ -8,18 +8,18 @@ import (
 	"log"
 )
 
-type AccountsCommand struct {
+type AccountsListCommand struct {
 }
 
-func (c *AccountsCommand) Synopsis() string {
-	return "commands for working with PLX candlesticks data"
+func (c *AccountsListCommand) Synopsis() string {
+	return "list all currency accounts and balances"
 }
 
-func (c *AccountsCommand) Help() string {
+func (c *AccountsListCommand) Help() string {
 	return c.Synopsis()
 }
 
-func (c *AccountsCommand) Run(args []string) int {
+func (c *AccountsListCommand) Run(args []string) int {
 	db, err := data.OpenDB()
 
 	if err != nil {

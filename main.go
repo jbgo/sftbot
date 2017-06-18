@@ -16,11 +16,10 @@ func main() {
 	c.Args = os.Args[1:]
 
 	c.Commands = map[string]cli.CommandFactory{
-		"accounts":            command.Accounts,
-		"candlesticks":        command.Candlesticks,
-		"candlesticks get":    command.CandlesticksGet,
-		"candlesticks list":   command.CandlesticksList,
-		"candlesticks import": command.CandlesticksImport,
+		"accounts list":     command.AccountsList,
+		"chart-data get":    command.ChartDataGet,
+		"chart-data list":   command.ChartDataList,
+		"chart-data import": command.ChartDataImport,
 	}
 
 	err := data.InitSchema()
