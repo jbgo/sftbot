@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"log"
 	"time"
@@ -23,6 +24,15 @@ var CURRENCIES = []string{
 	"XRP",
 	"STEEM",
 	"ZEC",
+	"BTS",
+	"ETC",
+	"SC",
+	"DASH",
+	"GNT",
+	"DGB",
+	"FCT",
+	"XMR",
+	"MAID",
 }
 
 type Store struct {
@@ -75,19 +85,23 @@ func (db *Store) Write(bucketName string, key interface{}, value interface{}) er
 	})
 }
 
-func (db *Store) ForEachPeriod(currencyPair string, callback func(stick *Candlestick)) error {
+func (db *Store) ForEachPeriod(currencyPair string, callback func(chartData *ChartData)) error {
 	return db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("candlesticks." + currencyPair))
+		b := tx.Bucket([]byte("chart_data." + currencyPair))
+
+		if b == nil {
+			return fmt.Errorf("unsupported currency pair: %s", currencyPair)
+		}
 
 		return b.ForEach(func(k, v []byte) error {
-			var stick Candlestick
+			var chartData ChartData
 
-			loopErr := json.Unmarshal(v, &stick)
+			loopErr := json.Unmarshal(v, &chartData)
 			if loopErr != nil {
 				return loopErr
 			}
 
-			callback(&stick)
+			callback(&chartData)
 
 			return nil
 		})
@@ -159,7 +173,7 @@ func createCurrencyDataBuckets(tx *bolt.Tx) error {
 			continue
 		}
 
-		_, err := tx.CreateBucketIfNotExists([]byte("candlesticks.BTC_" + currency))
+		_, err := tx.CreateBucketIfNotExists([]byte("chart_data.BTC_" + currency))
 
 		if err != nil {
 			return err

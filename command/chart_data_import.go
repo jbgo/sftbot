@@ -1,6 +1,9 @@
 package command
 
 import (
+	"bytes"
+	"flag"
+	"fmt"
 	"github.com/jbgo/sftbot/data"
 	"github.com/jbgo/sftbot/plx"
 	"log"
@@ -8,6 +11,13 @@ import (
 )
 
 type ChartDataImportCommand struct {
+	Flags *flag.FlagSet
+
+	CurrencyPair string
+
+	Continuous bool
+	Days       int64
+	Resolution int64
 }
 
 func (c *ChartDataImportCommand) Synopsis() string {
@@ -22,23 +32,48 @@ Usage: sftbot chart-data import [options]
 
 Options:
 
-  -days=N                 The number of days worth of chart data to import.
-                          Default: 7
+` + c.FlagOptionsString())
+}
 
-  -resolution=T           Resolution of chart data.
-                          Default: 15m
-                          Choices: 5m, 15m, 30m, 30m, 60m, ...
+func (c *ChartDataImportCommand) FlagOptionsString() string {
+	c.InitFlags()
 
-  -currenctPair=BTC_XYZ   PLX currency pair for chart data.
-                          Must be in the format BTC_XYZ
+	options := ""
+	buf := bytes.NewBufferString(options)
+	c.Flags.SetOutput(buf)
+	c.Flags.PrintDefaults()
 
-  -continuous             Continuously run and import new candlesticks data at
-                          the resolution interval.
-                          Default: false
-  `)
+	return buf.String()
+}
+
+func (c *ChartDataImportCommand) InitFlags() {
+	c.Flags = flag.NewFlagSet("chart-data import", flag.PanicOnError)
+	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
+	c.Flags.BoolVar(&c.Continuous, "continuous", false, "If true, continuously run and import new chart data at the specified resolution.")
+	c.Flags.Int64Var(&c.Days, "days", 7, "The number of days worth of chart data to import.")
+	c.Flags.Int64Var(&c.Resolution, "resolution", 300, "Resolution of chart data in seconds. Choices: 300, 900, 1800, 7200, 1440, 86400")
+}
+
+func (c *ChartDataImportCommand) Parse(args []string) error {
+	c.Flags.Parse(args)
+
+	if len(c.CurrencyPair) == 0 {
+		return fmt.Errorf("-currency-pair is required")
+	}
+
+	return nil
 }
 
 func (c *ChartDataImportCommand) Run(args []string) int {
+	c.InitFlags()
+
+	err := c.Parse(args)
+
+	if err != nil {
+		fmt.Println(c.Help())
+		return 1
+	}
+
 	db, err := data.OpenDB()
 
 	if err != nil {
@@ -48,25 +83,43 @@ func (c *ChartDataImportCommand) Run(args []string) int {
 
 	defer db.Close()
 
-	endTime := time.Now().Unix()
-	startTime := endTime - (60 * 60 * 24 * 1)
-
 	params := plx.ChartDataParams{
-		CurrencyPair: "BTC_XRP",
-		Start:        startTime,
-		End:          endTime,
-		Period:       300,
+		CurrencyPair: c.CurrencyPair,
+		Period:       c.Resolution,
 	}
 
-	chartData, err := plx.GetChartData(&params)
+	referenceTime := time.Now().Unix()
+	oneDay, _ := time.ParseDuration("24h")
+	secondsPerDay := int64(oneDay.Seconds())
 
-	for _, p := range *chartData {
-		err = db.Write("candlesticks.BTC_XRP", p.Date, p)
+	var numDays int64 = 0
+
+	for numDays < c.Days {
+		params.Start = referenceTime - ((c.Days - numDays) * secondsPerDay)
+		params.End = params.Start + secondsPerDay
+
+		log.Printf("loading chart data for %v - %v", time.Unix(params.Start, 0), time.Unix(params.End, 0))
+
+		chartData, err := plx.GetChartData(&params)
 
 		if err != nil {
 			log.Println(err)
 			return 1
 		}
+
+		for _, p := range *chartData {
+			err = db.Write("chart_data."+c.CurrencyPair, p.Date, p)
+
+			if err != nil {
+				log.Println(err)
+				return 1
+			}
+		}
+
+		numDays += 1
+
+		// avoid public API rate limits
+		time.Sleep(250 * time.Millisecond)
 	}
 
 	return 0

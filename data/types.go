@@ -5,7 +5,7 @@ type Account struct {
 	Balance float64
 }
 
-type Candlestick struct {
+type ChartData struct {
 	Date            int64
 	High            float64
 	Low             float64

@@ -62,8 +62,17 @@ func (c *ChartDataListCommand) Run(args []string) int {
 
 	defer db.Close()
 
-	err = db.ForEachPeriod(c.CurrencyPair, func(stick *data.Candlestick) {
-		fmt.Printf("exchange: %-8s date: %-16d open: %0.9f    close: %0.9f\n", "BTC_XRP", stick.Date, stick.Open, stick.Close)
+	err = db.ForEachPeriod(c.CurrencyPair, func(d *data.ChartData) {
+		fmt.Printf("%s t=%d vol=%0.9f wavg=%0.9f open=%0.9f close=%0.9f high=%0.9f low=%0.9f qvol=%0.9f\n",
+			"BTC_XRP",
+			d.Date,
+			d.Volume,
+			d.WeightedAverage,
+			d.Open,
+			d.Close,
+			d.High,
+			d.Low,
+			d.QuoteVolume)
 	})
 
 	if err != nil {

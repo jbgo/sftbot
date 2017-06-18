@@ -28,8 +28,8 @@ func (p *ChartDataParams) ToQueryString() string {
 		p.Period)
 }
 
-func GetChartData(params *ChartDataParams) (*[]data.Candlestick, error) {
-	var sticks []data.Candlestick
+func GetChartData(params *ChartDataParams) (*[]data.ChartData, error) {
+	var sticks []data.ChartData
 
 	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
 
