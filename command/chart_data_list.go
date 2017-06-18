@@ -1,7 +1,6 @@
 package command
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"github.com/jbgo/sftbot/data"
@@ -23,25 +22,15 @@ Usage: sftbot chart-data get [options]
 
   List the imported PLX chart data (a.k.a. candlesticks).
 
-Options:
-
-  ` + c.FlagOptionsString())
+` + helpOptions(c))
 }
 
-func (c *ChartDataListCommand) FlagOptionsString() string {
-	c.InitFlags()
-
-	options := ""
-	buf := bytes.NewBufferString(options)
-	c.Flags.SetOutput(buf)
-	c.Flags.PrintDefaults()
-
-	return buf.String()
-}
-
-func (c *ChartDataListCommand) InitFlags() {
+func (c *ChartDataListCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("chart-data list", flag.PanicOnError)
+
 	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
+
+	return c.Flags
 }
 
 func (c *ChartDataListCommand) Run(args []string) int {

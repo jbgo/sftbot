@@ -1,7 +1,6 @@
 package command
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"github.com/jbgo/sftbot/data"
@@ -30,28 +29,18 @@ Usage: sftbot chart-data import [options]
 
   Import Poloniex chart data (a.k.a. candlesticks).
 
-Options:
-
-` + c.FlagOptionsString())
+` + helpOptions(c))
 }
 
-func (c *ChartDataImportCommand) FlagOptionsString() string {
-	c.InitFlags()
-
-	options := ""
-	buf := bytes.NewBufferString(options)
-	c.Flags.SetOutput(buf)
-	c.Flags.PrintDefaults()
-
-	return buf.String()
-}
-
-func (c *ChartDataImportCommand) InitFlags() {
+func (c *ChartDataImportCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("chart-data import", flag.PanicOnError)
+
 	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
 	c.Flags.BoolVar(&c.Continuous, "continuous", false, "If true, continuously run and import new chart data at the specified resolution.")
 	c.Flags.Int64Var(&c.Days, "days", 7, "The number of days worth of chart data to import.")
 	c.Flags.Int64Var(&c.Resolution, "resolution", 300, "Resolution of chart data in seconds. Choices: 300, 900, 1800, 7200, 1440, 86400")
+
+	return c.Flags
 }
 
 func (c *ChartDataImportCommand) Parse(args []string) error {
