@@ -18,7 +18,7 @@ func (c *ChartDataListCommand) Synopsis() string {
 
 func (c *ChartDataListCommand) Help() string {
 	return formatHelpText(`
-Usage: sftbot chart-data get [options]
+Usage: sftbot chart-data list [options]
 
   List the imported PLX chart data (a.k.a. candlesticks).
 
@@ -28,7 +28,7 @@ Usage: sftbot chart-data get [options]
 func (c *ChartDataListCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("chart-data list", flag.PanicOnError)
 
-	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
+	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair. Must be in the format BTC_XYZ")
 
 	return c.Flags
 }
@@ -53,7 +53,7 @@ func (c *ChartDataListCommand) Run(args []string) int {
 
 	err = db.ForEachPeriod(c.CurrencyPair, func(d *data.ChartData) {
 		fmt.Printf("%s t=%d vol=%0.9f wavg=%0.9f open=%0.9f close=%0.9f high=%0.9f low=%0.9f qvol=%0.9f\n",
-			"BTC_XRP",
+			c.CurrencyPair,
 			d.Date,
 			d.Volume,
 			d.WeightedAverage,
