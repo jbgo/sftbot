@@ -20,6 +20,7 @@ func main() {
 		"chart-data get":    command.ChartDataGet,
 		"chart-data list":   command.ChartDataList,
 		"chart-data import": command.ChartDataImport,
+		"simulate":          command.Simulate,
 	}
 
 	err := data.InitSchema()

@@ -81,7 +81,7 @@ func InitSchema() error {
 func (db *Store) Write(bucketName string, key interface{}, value interface{}) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
-		return b.Put(EncodeKey(key), EncodeValue(value))
+		return b.Put(db.EncodeKey(key), db.EncodeValue(value))
 	})
 }
 
@@ -93,13 +93,10 @@ func (db *Store) ForEachPeriod(currencyPair string, callback func(chartData *Cha
 			return fmt.Errorf("unsupported currency pair: %s", currencyPair)
 		}
 
-		return b.ForEach(func(k, v []byte) error {
-			var chartData ChartData
+		var chartData ChartData
 
-			loopErr := json.Unmarshal(v, &chartData)
-			if loopErr != nil {
-				return loopErr
-			}
+		return b.ForEach(func(k, v []byte) error {
+			db.DecodeValue(v, &chartData)
 
 			callback(&chartData)
 
@@ -108,7 +105,7 @@ func (db *Store) ForEachPeriod(currencyPair string, callback func(chartData *Cha
 	})
 }
 
-func EncodeKey(data interface{}) []byte {
+func (db *Store) EncodeKey(data interface{}) []byte {
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, data)
 
@@ -119,7 +116,7 @@ func EncodeKey(data interface{}) []byte {
 	return buf.Bytes()
 }
 
-func EncodeValue(data interface{}) []byte {
+func (db *Store) EncodeValue(data interface{}) []byte {
 	encoded, err := json.Marshal(data)
 
 	if err != nil {
@@ -127,6 +124,14 @@ func EncodeValue(data interface{}) []byte {
 	}
 
 	return []byte(encoded)
+}
+
+func (db *Store) DecodeValue(data []byte, out interface{}) {
+	err := json.Unmarshal(data, out)
+
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func createBuckets(tx *bolt.Tx) error {

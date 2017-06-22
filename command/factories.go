@@ -24,3 +24,7 @@ func ChartDataList() (cli.Command, error) {
 func ChartDataImport() (cli.Command, error) {
 	return &ChartDataImportCommand{}, nil
 }
+
+func Simulate() (cli.Command, error) {
+	return &SimulateCommand{}, nil
+}
