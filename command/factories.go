@@ -9,8 +9,8 @@ func formatHelpText(helpText string) string {
 	return strings.TrimSpace(helpText)
 }
 
-func AccountsList() (cli.Command, error) {
-	return &AccountsListCommand{}, nil
+func Balances() (cli.Command, error) {
+	return &BalancesCommand{}, nil
 }
 
 func ChartDataGet() (cli.Command, error) {
