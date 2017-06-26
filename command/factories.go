@@ -28,3 +28,7 @@ func ChartDataImport() (cli.Command, error) {
 func Simulate() (cli.Command, error) {
 	return &SimulateCommand{}, nil
 }
+
+func TradeHistory() (cli.Command, error) {
+	return &TradeHistoryCommand{}, nil
+}
