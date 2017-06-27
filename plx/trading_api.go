@@ -60,7 +60,6 @@ func CompleteBalances() ([]CompleteBalance, error) {
 	return balances, nil
 }
 
-// {"orderNumber":"120466","type":"sell","rate":"0.025","amount":"100","total":"2.5"}
 type OpenOrder struct {
 	Number int64 `json:"orderNumber,string"`
 	Type   string
