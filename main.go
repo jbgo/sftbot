@@ -21,6 +21,7 @@ func main() {
 		"chart-data list":   command.ChartDataList,
 		"chart-data import": command.ChartDataImport,
 		"simulate":          command.Simulate,
+		"plx ticker":        command.Ticker,
 		"plx trade-history": command.TradeHistory,
 	}
 

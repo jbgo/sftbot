@@ -29,6 +29,10 @@ func Simulate() (cli.Command, error) {
 	return &SimulateCommand{}, nil
 }
 
+func Ticker() (cli.Command, error) {
+	return &TickerCommand{}, nil
+}
+
 func TradeHistory() (cli.Command, error) {
 	return &TradeHistoryCommand{}, nil
 }

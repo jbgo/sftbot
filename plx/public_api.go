@@ -118,3 +118,42 @@ func GetTradeHistory(params *TradeHistoryParams) (trades []Trade, err error) {
 
 	return trades, nil
 }
+
+type TickerEntry struct {
+	Market        string
+	Last          float64 `json:",string"`
+	LowestAsk     float64 `json:",string"`
+	HighestBid    float64 `json:",string"`
+	PercentChange float64 `json:",string"`
+	BaseVolume    float64 `json:",string"`
+	QuoteVolume   float64 `json:",string"`
+}
+
+func GetTicker() (ticker []TickerEntry, err error) {
+	url := fmt.Sprintf("%s?command=returnTicker", PUBLIC_API_URL)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return ticker, err
+	}
+
+	if resp.StatusCode != 200 {
+		return ticker, fmt.Errorf("request failed: %s", resp.Status)
+	}
+
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	respData := make(map[string]TickerEntry)
+	err = json.Unmarshal(body, &respData)
+	if err != nil {
+		return ticker, err
+	}
+
+	for k, v := range respData {
+		v.Market = k
+		ticker = append(ticker, v)
+	}
+
+	return ticker, err
+}
