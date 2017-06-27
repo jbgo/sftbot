@@ -60,6 +60,41 @@ func CompleteBalances() ([]CompleteBalance, error) {
 	return balances, nil
 }
 
+// {"orderNumber":"120466","type":"sell","rate":"0.025","amount":"100","total":"2.5"}
+type OpenOrder struct {
+	Number int64 `json:"orderNumber,string"`
+	Type   string
+	Rate   float64 `json:",string"`
+	Amount float64 `json:",string"`
+	Total  float64 `json:",string"`
+}
+
+func AllOpenOrders() (marketOrders map[string][]OpenOrder, err error) {
+	marketOrders = make(map[string][]OpenOrder)
+	client := NewTradingApiClient()
+
+	values := &url.Values{}
+	values.Set("command", "returnOpenOrders")
+	values.Set("currencyPair", "all")
+
+	resp, err := client.Post(values)
+
+	if err != nil {
+		return marketOrders, err
+	}
+
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return marketOrders, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+	}
+
+	err = json.Unmarshal(body, &marketOrders)
+
+	return marketOrders, err
+}
+
 type TradingApiClient struct {
 	*http.Client
 }

@@ -20,6 +20,7 @@ func main() {
 		"chart-data get":    command.ChartDataGet,
 		"chart-data list":   command.ChartDataList,
 		"chart-data import": command.ChartDataImport,
+		"plx orders":        command.OpenOrders,
 		"simulate":          command.Simulate,
 		"plx ticker":        command.Ticker,
 		"plx trade-history": command.TradeHistory,

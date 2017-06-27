@@ -25,6 +25,10 @@ func ChartDataImport() (cli.Command, error) {
 	return &ChartDataImportCommand{}, nil
 }
 
+func OpenOrders() (cli.Command, error) {
+	return &OpenOrdersCommand{}, nil
+}
+
 func Simulate() (cli.Command, error) {
 	return &SimulateCommand{}, nil
 }
