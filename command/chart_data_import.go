@@ -96,7 +96,7 @@ func (c *ChartDataImportCommand) Run(args []string) int {
 			return 1
 		}
 
-		for _, p := range *chartData {
+		for _, p := range chartData {
 			err = db.Write("chart_data."+c.CurrencyPair, p.Date, p)
 
 			if err != nil {

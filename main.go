@@ -23,6 +23,7 @@ func main() {
 		"plx orders":        command.OpenOrders,
 		"simulate":          command.Simulate,
 		"plx ticker":        command.Ticker,
+		"plx trade":         command.Trade,
 		"plx trade-history": command.TradeHistory,
 	}
 

@@ -30,7 +30,7 @@ func (p *ChartDataParams) ToQueryString() string {
 		p.Period)
 }
 
-func GetChartData(params *ChartDataParams) (*[]data.ChartData, error) {
+func GetChartData(params *ChartDataParams) ([]data.ChartData, error) {
 	var sticks []data.ChartData
 
 	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
@@ -53,7 +53,7 @@ func GetChartData(params *ChartDataParams) (*[]data.ChartData, error) {
 		return nil, err
 	}
 
-	return &sticks, nil
+	return sticks, nil
 }
 
 type TradeHistoryParams struct {

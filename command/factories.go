@@ -37,6 +37,10 @@ func Ticker() (cli.Command, error) {
 	return &TickerCommand{}, nil
 }
 
+func Trade() (cli.Command, error) {
+	return &TradeCommand{}, nil
+}
+
 func TradeHistory() (cli.Command, error) {
 	return &TradeHistoryCommand{}, nil
 }
