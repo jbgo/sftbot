@@ -24,6 +24,25 @@ type CompleteBalance struct {
 	BtcValue  float64 `json:"btcValue"`
 }
 
+func GetBalance(currency string) (balance *CompleteBalance, err error) {
+	balances, err := CompleteBalances()
+	if err != nil {
+		return balance, err
+	}
+
+	for _, b := range balances {
+		if b.Currency == currency {
+			balance = &b
+		}
+	}
+
+	if balance == nil {
+		err = fmt.Errorf("could not find balance for currency: %s", currency)
+	}
+
+	return balance, err
+}
+
 func CompleteBalances() ([]CompleteBalance, error) {
 	balances := make([]CompleteBalance, 0)
 	client := NewTradingApiClient()

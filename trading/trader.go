@@ -2,17 +2,17 @@ package trading
 
 import (
 	"fmt"
-	"github.com/jbgo/sftbot/data"
-	"github.com/jbgo/sftbot/plx"
+	// "github.com/jbgo/sftbot/data"
+	// "github.com/jbgo/sftbot/plx"
 	"log"
-	"math"
+	// "math"
 	"sort"
 	"time"
 )
 
 type Trader struct {
-	Market           string
-	Budget           float64
+	Market           Market
+	Exchange         Exchange
 	BuyThreshold     int64
 	SellThreshold    float64
 	VolatilityFactor float64
@@ -20,20 +20,16 @@ type Trader struct {
 	BTC_BuyAmount    float64
 	ALT_SellRatio    float64
 	TimeWindow       int64
-	EstimatedPlxFee  float64
+	EstimatedFee     float64
 	Simulation       bool
 	Bids             []*Order
 	Asks             []*Order
-	BTC_Balance      float64
 }
 
 type MarketData struct {
 	CurrentPrice    float64
 	Percentiles     []float64
 	VolatilityIndex float64
-	High            float64
-	Low             float64
-	SortedAverages  []float64
 }
 
 type Order struct {
@@ -42,28 +38,18 @@ type Order struct {
 	Amount float64
 }
 
-func NewTrader(market string) (trader *Trader, err error) {
-	ticker, err := plx.GetTicker()
-
+func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error) {
+	market, err := exchange.GetMarket(marketName)
 	if err != nil {
 		return nil, err
 	}
 
-	marketFound := false
-	for _, entry := range ticker {
-		if entry.Market == market {
-			marketFound = true
-			break
-		}
-	}
-
-	if !marketFound {
-		return nil, fmt.Errorf("market not found: %s", market)
+	if !market.Exists() {
+		return nil, fmt.Errorf("market not found: %s", market.GetName())
 	}
 
 	return &Trader{
 		Market:           market,
-		Budget:           0.05,
 		BuyThreshold:     50,
 		SellThreshold:    1.06,
 		VolatilityFactor: 1.02,
@@ -71,10 +57,9 @@ func NewTrader(market string) (trader *Trader, err error) {
 		BTC_BuyAmount:    0.01,
 		ALT_SellRatio:    0.5,
 		TimeWindow:       24 * 60 * 60,
-		EstimatedPlxFee:  0.005,
+		EstimatedFee:     0.005,
 		Simulation:       true,
-		// TODO get real balance each interation
-		BTC_Balance: 0.02,
+		Exchange:         exchange,
 	}, nil
 }
 
@@ -89,14 +74,12 @@ func (t *Trader) Trade() error {
 		return err
 	}
 
-	log.Printf("market=%s price=%0.9f 45_pct=%0.9f, 55_pct=%0.9f volatility=%0.9f high=%0.9f low=%0.9f\n",
+	log.Printf("market=%s price=%0.9f 45_pct=%0.9f, 55_pct=%0.9f volatility=%0.9f\n",
 		t.Market,
 		marketData.CurrentPrice,
 		marketData.Percentiles[45],
 		marketData.Percentiles[55],
-		marketData.VolatilityIndex,
-		marketData.High,
-		marketData.Low)
+		marketData.VolatilityIndex)
 
 	order, err := t.Buy(marketData)
 	if err != nil {
@@ -122,32 +105,28 @@ func (t *Trader) Trade() error {
 }
 
 func (t *Trader) Reconcile() error {
+	// TODO get balances
+	// TODO get my trade history
+	// TODO load open orders (bids and asks) from DB
+	// TODO update open orders (bids and asks) to be in sync with PLX
+	// TODO save bids and asks to DB
 	return nil
 }
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
-	shouldBuy := marketData.CurrentPrice < marketData.Percentiles[t.BuyThreshold] &&
-		marketData.VolatilityIndex > t.VolatilityFactor
-
-	if !shouldBuy {
+	if !t.ShouldBuy(marketData) {
 		return
 	}
 
 	order = t.BuildBuyOrder(marketData)
-	availableToTrade := t.BTC_AvailableToTrade(marketData)
 
-	tradeValue := order.Price * order.Amount * (1 + t.EstimatedPlxFee)
-	canBuy := availableToTrade > tradeValue
-
-	if !canBuy {
-		return
+	if !t.CanBuy(order) {
+		return nil, err
 	}
 
-	if t.Simulation {
-		t.Bids = append(t.Bids, order)
-	} else {
-		// TODO place the order
-	}
+	// TODO place the order
+	t.Bids = append(t.Bids, order)
+	// TODO persist bids to DB
 
 	if t.BuyThreshold > 10 {
 		t.BuyThreshold -= 2
@@ -160,6 +139,25 @@ func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	return order, nil
 }
 
+func (t *Trader) ShouldBuy(marketData *MarketData) bool {
+	return marketData.CurrentPrice < marketData.Percentiles[t.BuyThreshold] &&
+		marketData.VolatilityIndex > t.VolatilityFactor
+}
+
+func (t *Trader) CanBuy(order *Order) bool {
+	btcBalance, err := t.Exchange.GetBalance("BTC")
+	if err != nil || btcBalance == nil {
+		// TODO don't attempt to buy if network or exchange error, but maybe we
+		// should log or alert on this so we know when we're trying to buy but can't.
+		return false
+	}
+
+	tradeValue := order.Price * order.Amount * (1 + t.EstimatedFee)
+	canBuy := btcBalance.Available >= tradeValue
+
+	return canBuy
+}
+
 func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 	desiredPrice := marketData.CurrentPrice * 0.995
 	altAmount := t.BTC_BuyAmount / desiredPrice
@@ -169,16 +167,6 @@ func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 		Price:  desiredPrice,
 		Amount: altAmount,
 	}
-}
-
-func (t *Trader) BTC_AvailableToTrade(marketData *MarketData) float64 {
-	onOrders := 0.0
-
-	for _, bid := range t.Bids {
-		onOrders += bid.Price * bid.Amount * t.EstimatedPlxFee
-	}
-
-	return math.Min(t.Budget, t.BTC_Balance) - onOrders
 }
 
 func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
@@ -237,49 +225,34 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 }
 
 func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
-	marketData = &MarketData{}
-
 	endTime := time.Now().Unix()
 	startTime := endTime - (60 * 60 * 24 * 1)
 
-	params := plx.ChartDataParams{
-		CurrencyPair: t.Market,
-		Start:        startTime,
-		End:          endTime,
-		Period:       300,
-	}
-
-	chartData, err := plx.GetChartData(&params)
+	summaryData, err := t.Market.GetSummaryData(startTime, endTime)
 
 	if err != nil {
 		return nil, err
 	}
 
-	marketData.SortedAverages = getSortedAverages(chartData)
-	marketData.Percentiles = calculatePercentiles(marketData.SortedAverages)
+	marketData = &MarketData{}
+	marketData.Percentiles = calculatePercentiles(summaryData)
 	marketData.VolatilityIndex = marketData.Percentiles[55] / marketData.Percentiles[45]
-	marketData.Low = marketData.SortedAverages[0]
-	marketData.High = marketData.SortedAverages[len(marketData.SortedAverages)-1]
 
-	ticker, err := plx.GetTicker()
+	currentPrice, err := t.Market.GetCurrentPrice()
 
 	if err != nil {
 		return nil, err
 	}
 
-	for _, entry := range ticker {
-		if entry.Market == t.Market {
-			marketData.CurrentPrice = entry.Last
-		}
-	}
+	marketData.CurrentPrice = currentPrice
 
 	return marketData, nil
 }
 
-func getSortedAverages(chartData []data.ChartData) []float64 {
-	sortedAverages := make([]float64, 0, len(chartData))
+func getSortedAverages(summaryData []*SummaryData) []float64 {
+	sortedAverages := make([]float64, 0, len(summaryData))
 
-	for _, data := range chartData {
+	for _, data := range summaryData {
 		sortedAverages = append(sortedAverages, data.WeightedAverage)
 	}
 
@@ -288,8 +261,9 @@ func getSortedAverages(chartData []data.ChartData) []float64 {
 	return sortedAverages
 }
 
-func calculatePercentiles(sortedAverages []float64) []float64 {
+func calculatePercentiles(summaryData []*SummaryData) []float64 {
 	percentiles := make([]float64, 101)
+	sortedAverages := getSortedAverages(summaryData)
 
 	percentiles[0] = 0.0
 	percentiles[100] = sortedAverages[len(sortedAverages)-1]

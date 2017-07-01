@@ -59,7 +59,8 @@ func (c *TradeCommand) Run(args []string) int {
 		return 1
 	}
 
-	trader, err := trading.NewTrader(c.Market)
+	plxExchange := &trading.PlxExchange{}
+	trader, err := trading.NewTrader(c.Market, plxExchange)
 
 	if err != nil {
 		fmt.Println("[error]", err)
