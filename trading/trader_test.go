@@ -3,6 +3,7 @@ package trading
 import (
 	"math"
 	"testing"
+	"time"
 )
 
 func TestNewTrader(t *testing.T) {
@@ -69,18 +70,7 @@ func TestShouldBuy(t *testing.T) {
 func TestCanBuy(t *testing.T) {
 	btcBalance := &Balance{Available: 2.5}
 
-	balances := map[string]*Balance{
-		"BTC": btcBalance,
-	}
-
-	market := &FakeMarket{Name: "BTC_ABC", ExistsValue: true}
-	exchange := &FakeExchange{Balance: balances, Market: market}
-
-	trader, err := NewTrader("BTC_ABC", exchange)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	trader := &Trader{BTC_Balance: btcBalance}
 
 	trader.EstimatedFee = 0.0025
 
@@ -94,12 +84,6 @@ func TestCanBuy(t *testing.T) {
 
 	if !trader.CanBuy(order) {
 		t.Error("expect CanBuy() to be true when plenty of money is available")
-	}
-
-	balances["BTC"] = nil
-
-	if trader.CanBuy(order) {
-		t.Error("expect CanBuy() to be false when unable to retrieve balance")
 	}
 }
 
@@ -171,4 +155,159 @@ func TestLoadMarketData(t *testing.T) {
 
 	t.Logf("pct_%d -> %f", 45, marketData.Percentiles[45])
 	t.Logf("pct_%d -> %f", 55, marketData.Percentiles[55])
+}
+
+func TestShouldSell(t *testing.T) {
+	trader := Trader{
+		SellThreshold: 1.06,
+		LastBuy:       &Trade{Price: 0.1},
+	}
+
+	marketData := &MarketData{CurrentPrice: 0.107}
+
+	if !trader.ShouldSell(marketData) {
+		t.Error("expect ShouldSell() to be true when there is money to be made")
+	}
+
+	marketData.CurrentPrice = 0.105
+
+	if trader.ShouldSell(marketData) {
+		t.Error("expect ShouldSell() to be false when it's better to hold")
+	}
+
+	trader.LastBuy = nil
+
+	if trader.ShouldSell(marketData) {
+		t.Error("expect ShouldSell() to be false when there's nothing to sell")
+	}
+}
+
+func TestBuildSellOrder(t *testing.T) {
+	market := &FakeMarket{Name: "BTC_ABC", ExistsValue: true}
+	exchange := &FakeExchange{Market: market}
+
+	marketData := &MarketData{
+		CurrentPrice: 0.107,
+	}
+
+	trader, err := NewTrader("BTC_ABC", exchange)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trader.ALT_SellRatio = 0.5
+	trader.EstimatedFee = 0.005
+	trader.ALT_Balance = &Balance{Available: 100.0}
+
+	order, err := trader.BuildSellOrder(marketData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if order.Type != "sell" {
+		t.Error("expect order.Type to be 'buy', got", order.Type)
+	}
+
+	expected := 50.0
+	if order.Amount != expected {
+		t.Errorf("expect order.Amount to equal %f, got %f", expected, order.Amount)
+	}
+
+	precision := math.Pow(10, 7)
+	expected = 0.1075350
+	actual := math.Floor(order.Price*precision) / precision
+	if actual != expected {
+		t.Errorf("expect order.Price to equal %.9f, got %.9f", expected, actual)
+	}
+
+	// Test minimum sell amount
+	trader.BTC_BuyAmount = 0.1
+	marketData.CurrentPrice = 0.025
+	trader.ALT_Balance.Available = 6.0
+
+	order, err = trader.BuildSellOrder(marketData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	precision = 1000
+	expected = 3.980
+	actual = math.Floor(order.Amount*precision) / precision
+	if actual != expected {
+		t.Errorf("expect order.Amount to equal %.9f, got %.9f", expected, actual)
+	}
+}
+
+func TestCanSell(t *testing.T) {
+	altBalance := &Balance{}
+	order := &Order{}
+	trader := &Trader{ALT_Balance: altBalance}
+
+	altBalance.Available = 10.0
+	order.Amount = 10.0
+	if !trader.CanSell(order) {
+		t.Errorf("expect CanSell() to be true when balance is sufficient")
+	}
+
+	altBalance.Available = 9.99
+	order.Amount = 10.0
+	if trader.CanSell(order) {
+		t.Errorf("expect CanSell() to be false when balance is deficient")
+	}
+}
+
+func TestReconcile(t *testing.T) {
+	tradeHistory := []*Trade{
+		&Trade{Date: time.Now().Unix() - (3 * 60 * 60), Price: 0.42},
+	}
+
+	market := &FakeMarket{
+		Name:         "BTC_XYZ",
+		ExistsValue:  true,
+		TradeHistory: tradeHistory,
+	}
+
+	ticker := map[string][]*TickerEntry{
+		"BTC_XYZ": []*TickerEntry{&TickerEntry{Last: 0.105}},
+	}
+
+	balances := map[string]*Balance{
+		"BTC": &Balance{Available: 1.23},
+		"XYZ": &Balance{Available: 142.73},
+	}
+
+	exchange := &FakeExchange{
+		Market:   market,
+		Ticker:   ticker,
+		Balances: balances,
+	}
+
+	trader, err := NewTrader(market.Name, exchange)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = trader.Reconcile()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := trader.BTC_Balance.Available
+	expected := balances["BTC"].Available
+	if actual != expected {
+		t.Errorf("expect BTC balance to equal %f, got %f", expected, actual)
+	}
+
+	actual = trader.ALT_Balance.Available
+	expected = balances["XYZ"].Available
+	if actual != expected {
+		t.Errorf("expect ALT balance to equal %f, got %f", expected, actual)
+	}
+
+	actual = trader.LastBuy.Price
+	expected = tradeHistory[0].Price
+	if actual != expected {
+		t.Errorf("expect last buy price to equal %f, got %f", expected, actual)
+	}
 }

@@ -15,6 +15,7 @@ type FakeMarket struct {
 	ExistsValue  bool
 	CurrentPrice float64
 	SummaryData  []*SummaryData
+	TradeHistory []*Trade
 }
 
 func (market *FakeMarket) GetName() string {
@@ -37,6 +38,10 @@ func (market *FakeMarket) GetSummaryData(startTime, endTime int64) ([]*SummaryDa
 	return market.SummaryData, nil
 }
 
+func (market *FakeMarket) GetTradeHistory(startTime, endTime int64) ([]*Trade, error) {
+	return market.TradeHistory, nil
+}
+
 /**
  * FakeExchange
  *
@@ -44,9 +49,9 @@ func (market *FakeMarket) GetSummaryData(startTime, endTime int64) ([]*SummaryDa
  */
 
 type FakeExchange struct {
-	Market  Market
-	Ticker  map[string][]*TickerEntry
-	Balance map[string]*Balance
+	Market   Market
+	Ticker   map[string][]*TickerEntry
+	Balances map[string]*Balance
 }
 
 func (exchange *FakeExchange) GetMarket(marketName string) (Market, error) {
@@ -59,6 +64,6 @@ func (exchange *FakeExchange) GetTicker(marketName string) ([]*TickerEntry, erro
 }
 
 func (exchange *FakeExchange) GetBalance(currency string) (*Balance, error) {
-	balance, _ := exchange.Balance[currency]
+	balance, _ := exchange.Balances[currency]
 	return balance, nil
 }

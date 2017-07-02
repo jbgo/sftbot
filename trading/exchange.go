@@ -42,4 +42,5 @@ type Market interface {
 	Exists() bool
 	GetCurrentPrice() (float64, error)
 	GetSummaryData(startTime, endTime int64) (summaryData []*SummaryData, err error)
+	GetTradeHistory(startTime, endTime int64) ([]*Trade, error)
 }

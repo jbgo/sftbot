@@ -13,6 +13,8 @@ import (
 type Trader struct {
 	Market           Market
 	Exchange         Exchange
+	BTC_Balance      *Balance
+	ALT_Balance      *Balance
 	BuyThreshold     int64
 	SellThreshold    float64
 	VolatilityFactor float64
@@ -21,9 +23,7 @@ type Trader struct {
 	ALT_SellRatio    float64
 	TimeWindow       int64
 	EstimatedFee     float64
-	Simulation       bool
-	Bids             []*Order
-	Asks             []*Order
+	LastBuy          *Trade
 }
 
 type MarketData struct {
@@ -38,13 +38,25 @@ type Order struct {
 	Amount float64
 }
 
+type Trade struct {
+	Date     int64
+	Type     string
+	Price    float64
+	Amount   float64
+	Total    float64
+	Fee      float64
+	Exchange string
+	// For storing data specific to a particular exchange
+	Metadata interface{}
+}
+
 func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error) {
 	market, err := exchange.GetMarket(marketName)
 	if err != nil {
 		return nil, err
 	}
 
-	if !market.Exists() {
+	if market == nil || !market.Exists() {
 		return nil, fmt.Errorf("market not found: %s", market.GetName())
 	}
 
@@ -58,7 +70,6 @@ func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error)
 		ALT_SellRatio:    0.5,
 		TimeWindow:       24 * 60 * 60,
 		EstimatedFee:     0.005,
-		Simulation:       true,
 		Exchange:         exchange,
 	}, nil
 }
@@ -104,12 +115,39 @@ func (t *Trader) Trade() error {
 	return nil
 }
 
-func (t *Trader) Reconcile() error {
-	// TODO get balances
-	// TODO get my trade history
-	// TODO load open orders (bids and asks) from DB
-	// TODO update open orders (bids and asks) to be in sync with PLX
-	// TODO save bids and asks to DB
+func (t *Trader) Reconcile() (err error) {
+	// TODO load state from DB
+
+	t.BTC_Balance, err = t.Exchange.GetBalance("BTC")
+	if err != nil {
+		return err
+	}
+
+	t.ALT_Balance, err = t.Exchange.GetBalance(t.Market.GetCurrency())
+	if err != nil {
+		return err
+	}
+
+	endTime := time.Now().Unix()
+	startTime := endTime - (24 * 60 * 60)
+
+	if t.LastBuy != nil {
+		startTime = t.LastBuy.Date
+	}
+
+	trades, err := t.Market.GetTradeHistory(startTime, endTime)
+	if err != nil {
+		return err
+	}
+
+	if len(trades) > 0 {
+		t.LastBuy = trades[0]
+	}
+
+	// TODO recalculate thresholds?
+
+	// TODO save updated state to DB
+
 	return nil
 }
 
@@ -125,8 +163,6 @@ func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	}
 
 	// TODO place the order
-	t.Bids = append(t.Bids, order)
-	// TODO persist bids to DB
 
 	if t.BuyThreshold > 10 {
 		t.BuyThreshold -= 2
@@ -145,17 +181,8 @@ func (t *Trader) ShouldBuy(marketData *MarketData) bool {
 }
 
 func (t *Trader) CanBuy(order *Order) bool {
-	btcBalance, err := t.Exchange.GetBalance("BTC")
-	if err != nil || btcBalance == nil {
-		// TODO don't attempt to buy if network or exchange error, but maybe we
-		// should log or alert on this so we know when we're trying to buy but can't.
-		return false
-	}
-
 	tradeValue := order.Price * order.Amount * (1 + t.EstimatedFee)
-	canBuy := btcBalance.Available >= tradeValue
-
-	return canBuy
+	return t.BTC_Balance.Available >= tradeValue
 }
 
 func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
@@ -170,50 +197,21 @@ func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 }
 
 func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
-	if len(t.Bids) == 0 {
+	if !t.ShouldSell(marketData) {
 		return nil, nil
 	}
 
-	lastBuyPrice := t.Bids[len(t.Bids)-1].Price
-	shouldSell := marketData.CurrentPrice > lastBuyPrice*t.SellThreshold
+	order, err = t.BuildSellOrder(marketData)
 
-	if !shouldSell {
+	if err != nil {
 		return nil, nil
 	}
 
-	availableAltBalance := 0.0 // TODO: get available alt balance
-	altAmount := availableAltBalance * t.ALT_SellRatio
-	desiredPrice := marketData.CurrentPrice * 1.001
-	btcAmount := altAmount * desiredPrice
-
-	if altAmount*btcAmount < 0.1*t.BTC_BuyAmount {
-		// Enforce minimum sell amount
-		altAmount = 0.5 * t.BTC_BuyAmount / marketData.CurrentPrice
-		btcAmount = altAmount * desiredPrice
-	}
-
-	if altAmount > availableAltBalance {
-		// Don't sell. Wait for more buys.
+	if !t.CanSell(order) {
 		return nil, nil
 	}
 
-	if t.Simulation {
-		order = &Order{
-			Type:   "sell",
-			Price:  desiredPrice,
-			Amount: altAmount,
-		}
-
-		t.Asks = append(t.Asks, order)
-	} else {
-		// TODO place the order
-	}
-
-	// remove last bid from list - yuck! y no slice.Pop()?
-	if len(t.Bids) > 0 {
-		i := len(t.Bids) - 1
-		t.Bids = append(t.Bids[:i], t.Bids[i+1:]...)
-	}
+	// TODO place the order
 
 	if t.BuyThreshold < 50 {
 		t.BuyThreshold += 2
@@ -222,6 +220,30 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 	t.SellThreshold += 0.01
 
 	return order, nil
+}
+
+func (t *Trader) ShouldSell(marketData *MarketData) bool {
+	if t.LastBuy == nil {
+		return false
+	}
+
+	return marketData.CurrentPrice > t.LastBuy.Price*t.SellThreshold
+}
+
+func (t *Trader) BuildSellOrder(marketData *MarketData) (*Order, error) {
+	order := &Order{Type: "sell"}
+	order.Amount = t.ALT_Balance.Available * t.ALT_SellRatio
+	order.Price = marketData.CurrentPrice * (1 + t.EstimatedFee)
+
+	if order.Amount*order.Price < t.BTC_BuyAmount {
+		order.Amount = t.BTC_BuyAmount / order.Price
+	}
+
+	return order, nil
+}
+
+func (t *Trader) CanSell(order *Order) bool {
+	return order.Amount <= t.ALT_Balance.Available
 }
 
 func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
