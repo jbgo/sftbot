@@ -2,7 +2,7 @@ package trading
 
 import (
 	"fmt"
-	// "github.com/jbgo/sftbot/data"
+	"github.com/jbgo/sftbot/db"
 	// "github.com/jbgo/sftbot/plx"
 	"log"
 	// "math"
@@ -23,7 +23,18 @@ type Trader struct {
 	ALT_SellRatio    float64
 	TimeWindow       int64
 	EstimatedFee     float64
-	LastBuy          *Trade
+	Bids             []*Order
+	Asks             []*Order
+	DB               db.Store
+	StateKey         string
+}
+
+// Trader attributes that get persisted between runs
+type TraderState struct {
+	BuyThreshold  int64
+	SellThreshold float64
+	Bids          []*Order
+	Asks          []*Order
 }
 
 type MarketData struct {
@@ -33,9 +44,10 @@ type MarketData struct {
 }
 
 type Order struct {
-	Type   string
-	Price  float64
-	Amount float64
+	Type    string
+	Price   float64
+	Amount  float64
+	Cleared bool
 }
 
 type Trade struct {
@@ -51,6 +63,11 @@ type Trade struct {
 }
 
 func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error) {
+	dbStore, err := db.NewBoltStore("trader_"+marketName, "trading.db")
+	if err != nil {
+		return nil, err
+	}
+
 	market, err := exchange.GetMarket(marketName)
 	if err != nil {
 		return nil, err
@@ -71,16 +88,23 @@ func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error)
 		TimeWindow:       24 * 60 * 60,
 		EstimatedFee:     0.005,
 		Exchange:         exchange,
+		DB:               dbStore,
+		StateKey:         "trader.state",
 	}, nil
 }
 
 func (t *Trader) Trade() error {
-	err := t.Reconcile()
+	err := t.LoadState()
 	if err != nil {
 		return err
 	}
 
 	marketData, err := t.LoadMarketData()
+	if err != nil {
+		return err
+	}
+
+	err = t.Reconcile()
 	if err != nil {
 		return err
 	}
@@ -115,7 +139,7 @@ func (t *Trader) Trade() error {
 		log.Printf("market=%s action=order type=selln\n", t.Market)
 	}
 
-	return nil
+	return t.SaveState()
 }
 
 func (t *Trader) LoadBalances() (err error) {
@@ -221,11 +245,19 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 }
 
 func (t *Trader) ShouldSell(marketData *MarketData) bool {
-	if t.LastBuy == nil {
+	var lastClearedBid *Order
+
+	for _, bid := range t.Bids {
+		if bid.Cleared {
+			lastClearedBid = bid
+		}
+	}
+
+	if lastClearedBid == nil {
 		return false
 	}
 
-	return marketData.CurrentPrice > t.LastBuy.Price*t.SellThreshold
+	return marketData.CurrentPrice > lastClearedBid.Price*t.SellThreshold
 }
 
 func (t *Trader) BuildSellOrder(marketData *MarketData) (*Order, error) {
@@ -267,6 +299,41 @@ func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
 	marketData.CurrentPrice = currentPrice
 
 	return marketData, nil
+}
+
+func (t *Trader) LoadState() error {
+	traderState := &TraderState{}
+
+	err, hasData := t.DB.HasData(t.StateKey)
+	if err != nil {
+		return err
+	}
+
+	if !hasData {
+		// No state to load when first run of a new currency
+		return nil
+	}
+
+	err = t.DB.Read(t.StateKey, &traderState)
+	if err != nil {
+		return err
+	}
+
+	t.BuyThreshold = traderState.BuyThreshold
+	t.SellThreshold = traderState.SellThreshold
+	t.Bids = traderState.Bids
+	t.Asks = traderState.Asks
+
+	return nil
+}
+
+func (t *Trader) SaveState() error {
+	return t.DB.Write(t.StateKey, &TraderState{
+		BuyThreshold:  t.BuyThreshold,
+		SellThreshold: t.SellThreshold,
+		Bids:          t.Bids,
+		Asks:          t.Asks,
+	})
 }
 
 func getSortedAverages(summaryData []*SummaryData) []float64 {

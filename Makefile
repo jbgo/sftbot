@@ -11,3 +11,6 @@ test: test/trading
 
 test/trading:
 	$(GO_TEST) $(REPO)/trading
+
+test/db:
+	$(GO_TEST) $(REPO)/db

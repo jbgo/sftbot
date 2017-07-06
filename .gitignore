@@ -1,4 +1,4 @@
 sftbot
-sftbot.db
+*.db
 .creds.json
 coverage.out

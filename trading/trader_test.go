@@ -160,7 +160,10 @@ func TestLoadMarketData(t *testing.T) {
 func TestShouldSell(t *testing.T) {
 	trader := Trader{
 		SellThreshold: 1.06,
-		LastBuy:       &Trade{Price: 0.1},
+		Bids: []*Order{
+			&Order{Price: 0.1, Cleared: true},
+			&Order{Price: 0.9, Cleared: false},
+		},
 	}
 
 	marketData := &MarketData{CurrentPrice: 0.107}
@@ -175,7 +178,7 @@ func TestShouldSell(t *testing.T) {
 		t.Error("expect ShouldSell() to be false when it's better to hold")
 	}
 
-	trader.LastBuy = nil
+	trader.Bids = []*Order{}
 
 	if trader.ShouldSell(marketData) {
 		t.Error("expect ShouldSell() to be false when there's nothing to sell")
@@ -321,3 +324,66 @@ func TestLoadBalances(t *testing.T) {
 // 		t.Errorf("expect %d bids, got %d", 3, len(t.Bids))
 // 	}
 // }
+
+func TestPersistence(t *testing.T) {
+	market := &FakeMarket{Name: "BTC_TESTING", ExistsValue: true}
+	exchange := &FakeExchange{Market: market}
+
+	trader, err := NewTrader(market.Name, exchange)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	trader.DB.Delete(trader.StateKey)
+
+	err = trader.LoadState()
+	if err != nil {
+		t.Fatal("expecting NO error, got", err)
+	}
+
+	trader.BuyThreshold = 36
+	trader.SellThreshold = 1.123
+	trader.Bids = []*Order{
+		&Order{Price: 0.1},
+		&Order{Price: 0.2},
+	}
+	trader.Asks = []*Order{
+		&Order{Price: 0.3},
+	}
+
+	err = trader.SaveState()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	trader, err = NewTrader(market.Name, exchange)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = trader.LoadState()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if trader.BuyThreshold != 36 {
+		t.Errorf("expect BuyThreshold to be %d, got %d", 36, trader.BuyThreshold)
+	}
+
+	if trader.SellThreshold != 1.123 {
+		t.Errorf("expect SellThreshold to be %f, got %f", 1.123, trader.SellThreshold)
+	}
+
+	if len(trader.Bids) != 2 {
+		t.Errorf("expect %d Bids, got %d", 2, len(trader.Bids))
+	}
+
+	if len(trader.Asks) != 1 {
+		t.Errorf("expect %d Asks, got %d", 1, len(trader.Asks))
+	}
+
+	lastBid := trader.Bids[1].Price
+	if lastBid != 0.2 {
+		t.Errorf("expect last bid price to be %f, got %f", 0.2, lastBid)
+	}
+}
