@@ -70,7 +70,7 @@ type Trade struct {
 	Total  float64
 }
 
-type PlxTrade struct {
+type PlxPublicTrade struct {
 	Date   string
 	Type   string
 	Rate   string
@@ -98,7 +98,7 @@ func GetTradeHistory(params *TradeHistoryParams) (trades []Trade, err error) {
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	respData := make([]PlxTrade, 0, 1024)
+	respData := make([]PlxPublicTrade, 0, 1024)
 	err = json.Unmarshal(body, &respData)
 	if err != nil {
 		return nil, err

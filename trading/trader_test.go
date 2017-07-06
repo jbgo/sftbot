@@ -255,7 +255,7 @@ func TestCanSell(t *testing.T) {
 	}
 }
 
-func TestReconcile(t *testing.T) {
+func TestLoadBalances(t *testing.T) {
 	tradeHistory := []*Trade{
 		&Trade{Date: time.Now().Unix() - (3 * 60 * 60), Price: 0.42},
 	}
@@ -287,7 +287,7 @@ func TestReconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = trader.Reconcile()
+	err = trader.LoadBalances()
 
 	if err != nil {
 		t.Fatal(err)
@@ -304,10 +304,20 @@ func TestReconcile(t *testing.T) {
 	if actual != expected {
 		t.Errorf("expect ALT balance to equal %f, got %f", expected, actual)
 	}
-
-	actual = trader.LastBuy.Price
-	expected = tradeHistory[0].Price
-	if actual != expected {
-		t.Errorf("expect last buy price to equal %f, got %f", expected, actual)
-	}
 }
+
+// func TestReconcile(t *testing.T) {
+// 	trader, err := NewTrader(market.Name, exchange, store)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	err = trader.Reconcile()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	if len(t.Bids) == 0 {
+// 		t.Errorf("expect %d bids, got %d", 3, len(t.Bids))
+// 	}
+// }

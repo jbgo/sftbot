@@ -16,15 +16,16 @@ func main() {
 	c.Args = os.Args[1:]
 
 	c.Commands = map[string]cli.CommandFactory{
-		"plx balances":      command.Balances,
 		"chart-data get":    command.ChartDataGet,
 		"chart-data list":   command.ChartDataList,
 		"chart-data import": command.ChartDataImport,
+		"plx balances":      command.Balances,
+		"plx my-trades":     command.MyTrades,
 		"plx orders":        command.OpenOrders,
-		"simulate":          command.Simulate,
 		"plx ticker":        command.Ticker,
 		"plx trade":         command.Trade,
 		"plx trade-history": command.TradeHistory,
+		"simulate":          command.Simulate,
 	}
 
 	err := data.InitSchema()

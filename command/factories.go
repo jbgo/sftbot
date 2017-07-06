@@ -25,6 +25,10 @@ func ChartDataImport() (cli.Command, error) {
 	return &ChartDataImportCommand{}, nil
 }
 
+func MyTrades() (cli.Command, error) {
+	return &MyTradesCommand{}, nil
+}
+
 func OpenOrders() (cli.Command, error) {
 	return &OpenOrdersCommand{}, nil
 }

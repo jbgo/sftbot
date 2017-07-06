@@ -85,6 +85,11 @@ func (t *Trader) Trade() error {
 		return err
 	}
 
+	err = t.LoadBalances()
+	if err != nil {
+		return err
+	}
+
 	log.Printf("market=%s price=%0.9f 45_pct=%0.9f, 55_pct=%0.9f volatility=%0.9f\n",
 		t.Market,
 		marketData.CurrentPrice,
@@ -98,7 +103,6 @@ func (t *Trader) Trade() error {
 	}
 
 	if order != nil {
-		// TODO: save order to DB
 		log.Printf("market=%s action=order type=buy\n", t.Market)
 	}
 
@@ -108,16 +112,13 @@ func (t *Trader) Trade() error {
 	}
 
 	if order != nil {
-		// TODO: save order to DB
 		log.Printf("market=%s action=order type=selln\n", t.Market)
 	}
 
 	return nil
 }
 
-func (t *Trader) Reconcile() (err error) {
-	// TODO load state from DB
-
+func (t *Trader) LoadBalances() (err error) {
 	t.BTC_Balance, err = t.Exchange.GetBalance("BTC")
 	if err != nil {
 		return err
@@ -128,25 +129,22 @@ func (t *Trader) Reconcile() (err error) {
 		return err
 	}
 
-	endTime := time.Now().Unix()
-	startTime := endTime - (24 * 60 * 60)
+	return nil
+}
 
-	if t.LastBuy != nil {
-		startTime = t.LastBuy.Date
-	}
-
-	trades, err := t.Market.GetTradeHistory(startTime, endTime)
-	if err != nil {
-		return err
-	}
-
-	if len(trades) > 0 {
-		t.LastBuy = trades[0]
-	}
-
-	// TODO recalculate thresholds?
-
-	// TODO save updated state to DB
+func (t *Trader) Reconcile() (err error) {
+	// TODO
+	// load bids and asks
+	// get open orders
+	// for each bid:
+	//   if bid not in open orders, bid.Cleared = true
+	// for each ask:
+	//   if ask not in open orders, ask.Cleared = true
+	// bids, err := data.Store.LoadBids("")
+	// if err != nil {
+	//   return nil
+	// }
+	// t.Bids = bids
 
 	return nil
 }

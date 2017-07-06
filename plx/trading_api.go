@@ -113,6 +113,58 @@ func AllOpenOrders() (marketOrders map[string][]OpenOrder, err error) {
 	return marketOrders, err
 }
 
+type PlxPrivateTrade struct {
+	GlobalTradeId int64
+	TradeId       string
+	OrderNumber   string
+	Date          string
+	Rate          float64 `json:",string"`
+	Amount        float64 `json:",string"`
+	Total         float64 `json:",string"`
+	Fee           float64 `json:",string"`
+	Type          string
+	Category      string
+}
+
+// returnTradeHistory
+// Returns your trade history for a given market, specified by the "currencyPair" POST parameter. You may specify "all" as the currencyPair to receive your trade history for all markets. You may optionally specify a range via "start" and/or "end" POST parameters, given in UNIX timestamp format; if you do not specify a range, it will be limited to one day. Sample output:
+// [{ "globalTradeID": 25129732, "tradeID": "6325758", "date": "2016-04-05 08:08:40", "rate": "0.02565498", "amount": "0.10000000", "total": "0.00256549", "fee": "0.00200000", "orderNumber": "34225313575", "type": "sell", "category": "exchange" }, { "globalTradeID": 25129628, "tradeID": "6325741", "date": "2016-04-05 08:07:55", "rate": "0.02565499", "amount": "0.10000000", "total": "0.00256549", "fee": "0.00200000", "orderNumber": "34225195693", "type": "buy", "category": "exchange" }, ... ]
+
+func MyTradeHistory(marketName string, startTime, endTime int64) (trades map[string][]*PlxPrivateTrade, err error) {
+	client := NewTradingApiClient()
+
+	values := &url.Values{}
+	values.Set("command", "returnTradeHistory")
+	values.Set("currencyPair", marketName)
+	values.Set("start", strconv.FormatInt(startTime, 10))
+	values.Set("end", strconv.FormatInt(endTime, 10))
+
+	resp, err := client.Post(values)
+
+	if err != nil {
+		return trades, err
+	}
+
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return trades, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+	}
+
+	trades = make(map[string][]*PlxPrivateTrade)
+
+	if marketName == "all" {
+		err = json.Unmarshal(body, &trades)
+	} else {
+		marketTrades := make([]*PlxPrivateTrade, 0, 100)
+		err = json.Unmarshal(body, &marketTrades)
+		trades[marketName] = marketTrades
+	}
+
+	return trades, err
+}
+
 type TradingApiClient struct {
 	*http.Client
 }
