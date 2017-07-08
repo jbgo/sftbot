@@ -1,6 +1,9 @@
 package trading
 
 import (
+	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
 )
 
@@ -11,12 +14,14 @@ import (
  */
 
 type FakeMarket struct {
-	Name          string
-	ExistsValue   bool
-	CurrentPrice  float64
-	SummaryData   []*SummaryData
-	TradeHistory  []*Trade
-	PendingOrders []*Order
+	Name             string
+	ExistsValue      bool
+	CurrentPrice     float64
+	SummaryData      []*SummaryData
+	TradeHistory     []*Trade
+	PendingOrders    []*Order
+	TriggerBuyError  bool
+	TriggerSellError bool
 }
 
 func (market *FakeMarket) GetName() string {
@@ -45,6 +50,24 @@ func (market *FakeMarket) GetTradeHistory(startTime, endTime int64) ([]*Trade, e
 
 func (market *FakeMarket) GetPendingOrders() ([]*Order, error) {
 	return market.PendingOrders, nil
+}
+
+func (market *FakeMarket) Buy(order *Order) error {
+	if market.TriggerBuyError {
+		return fmt.Errorf("fake buy error")
+	}
+
+	order.Id = strconv.FormatInt(rand.Int63(), 10)
+	return nil
+}
+
+func (market *FakeMarket) Sell(order *Order) error {
+	if market.TriggerSellError {
+		return fmt.Errorf("fake sell error")
+	}
+
+	order.Id = strconv.FormatInt(rand.Int63(), 10)
+	return nil
 }
 
 /**

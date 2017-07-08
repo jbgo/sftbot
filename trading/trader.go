@@ -179,16 +179,21 @@ func removeFilledOrders(pendingOrders, staleBids []*Order) (freshBids []*Order) 
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	if !t.ShouldBuy(marketData) {
-		return
+		return nil, nil
 	}
 
 	order = t.BuildBuyOrder(marketData)
 
 	if !t.CanBuy(order) {
-		return nil, err
+		return nil, nil
 	}
 
-	// TODO place the order
+	err = t.Market.Buy(order)
+	if err != nil {
+		return order, err
+	}
+
+	t.Bids = append(t.Bids, order)
 
 	if t.BuyThreshold > 10 {
 		t.BuyThreshold -= 2
@@ -219,6 +224,7 @@ func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 		Type:   "buy",
 		Price:  desiredPrice,
 		Amount: altAmount,
+		Total:  desiredPrice * altAmount,
 	}
 }
 
@@ -227,17 +233,16 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 		return nil, nil
 	}
 
-	order, err = t.BuildSellOrder(marketData)
-
-	if err != nil {
-		return nil, nil
-	}
+	order = t.BuildSellOrder(marketData)
 
 	if !t.CanSell(order) {
 		return nil, nil
 	}
 
-	// TODO place the order
+	err = t.Market.Sell(order)
+	if err != nil {
+		return order, err
+	}
 
 	if t.BuyThreshold < 50 {
 		t.BuyThreshold += 2
@@ -249,22 +254,16 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 }
 
 func (t *Trader) ShouldSell(marketData *MarketData) bool {
-	var lastTrade *Order
-
-	for _, bid := range t.Bids {
-		if bid.Filled {
-			lastTrade = bid
-		}
-	}
-
-	if lastTrade == nil {
+	if len(t.Bids) == 0 {
 		return false
 	}
+
+	lastTrade := t.Bids[len(t.Bids)-1]
 
 	return marketData.CurrentPrice > lastTrade.Price*t.SellThreshold
 }
 
-func (t *Trader) BuildSellOrder(marketData *MarketData) (*Order, error) {
+func (t *Trader) BuildSellOrder(marketData *MarketData) *Order {
 	order := &Order{Type: "sell"}
 	order.Amount = t.ALT_Balance.Available * t.ALT_SellRatio
 	order.Price = marketData.CurrentPrice * (1 + t.EstimatedFee)
@@ -273,7 +272,9 @@ func (t *Trader) BuildSellOrder(marketData *MarketData) (*Order, error) {
 		order.Amount = t.BTC_BuyAmount / order.Price
 	}
 
-	return order, nil
+	order.Total = order.Price * order.Amount
+
+	return order
 }
 
 func (t *Trader) CanSell(order *Order) bool {

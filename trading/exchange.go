@@ -36,7 +36,6 @@ type Order struct {
 	Price  float64
 	Amount float64
 	Total  float64
-	Filled bool
 }
 
 type Exchange interface {
@@ -46,11 +45,13 @@ type Exchange interface {
 }
 
 type Market interface {
-	GetName() string
-	GetCurrency() string
+	Buy(order *Order) error
 	Exists() bool
+	GetCurrency() string
 	GetCurrentPrice() (float64, error)
+	GetName() string
+	GetPendingOrders() ([]*Order, error)
 	GetSummaryData(startTime, endTime int64) (summaryData []*SummaryData, err error)
 	GetTradeHistory(startTime, endTime int64) ([]*Trade, error)
-	GetPendingOrders() ([]*Order, error)
+	Sell(order *Order) error
 }
