@@ -7,7 +7,7 @@ build: *.go command/*.go
 coverage:
 	go tool cover -html=coverage.out
 
-test: test/trading
+test: test/trading test/db
 
 test/trading:
 	$(GO_TEST) $(REPO)/trading

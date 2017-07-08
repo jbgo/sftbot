@@ -11,11 +11,12 @@ import (
  */
 
 type FakeMarket struct {
-	Name         string
-	ExistsValue  bool
-	CurrentPrice float64
-	SummaryData  []*SummaryData
-	TradeHistory []*Trade
+	Name          string
+	ExistsValue   bool
+	CurrentPrice  float64
+	SummaryData   []*SummaryData
+	TradeHistory  []*Trade
+	PendingOrders []*Order
 }
 
 func (market *FakeMarket) GetName() string {
@@ -40,6 +41,10 @@ func (market *FakeMarket) GetSummaryData(startTime, endTime int64) ([]*SummaryDa
 
 func (market *FakeMarket) GetTradeHistory(startTime, endTime int64) ([]*Trade, error) {
 	return market.TradeHistory, nil
+}
+
+func (market *FakeMarket) GetPendingOrders() ([]*Order, error) {
+	return market.PendingOrders, nil
 }
 
 /**

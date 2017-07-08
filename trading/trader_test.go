@@ -161,8 +161,8 @@ func TestShouldSell(t *testing.T) {
 	trader := Trader{
 		SellThreshold: 1.06,
 		Bids: []*Order{
-			&Order{Price: 0.1, Cleared: true},
-			&Order{Price: 0.9, Cleared: false},
+			&Order{Price: 0.1, Filled: true},
+			&Order{Price: 0.9, Filled: false},
 		},
 	}
 
@@ -309,21 +309,51 @@ func TestLoadBalances(t *testing.T) {
 	}
 }
 
-// func TestReconcile(t *testing.T) {
-// 	trader, err := NewTrader(market.Name, exchange, store)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+func TestReconcile(t *testing.T) {
+	market := &FakeMarket{Name: "BTC_XYZ", ExistsValue: true}
+	exchange := &FakeExchange{Market: market}
+	trader, err := NewTrader(market.Name, exchange)
 
-// 	err = trader.Reconcile()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	if len(t.Bids) == 0 {
-// 		t.Errorf("expect %d bids, got %d", 3, len(t.Bids))
-// 	}
-// }
+	trader.Bids = []*Order{
+		&Order{Id: "foo", Price: 0.24},
+		&Order{Id: "bar", Price: 0.19},
+		&Order{Id: "baz", Price: 0.27},
+	}
+
+	trader.Asks = []*Order{
+		&Order{Id: "boggle", Price: 0.29},
+	}
+
+	market.PendingOrders = []*Order{
+		&Order{Id: "foo", Price: 0.24},
+		&Order{Id: "baz", Price: 0.27},
+	}
+
+	err = trader.Reconcile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(trader.Bids) != 2 {
+		t.Errorf("expect %d bids, got %d", 2, len(trader.Bids))
+	}
+
+	if trader.Bids[0].Id != "foo" {
+		t.Errorf("expect first bid id to be %s, got %s", "foo", trader.Bids[0].Id)
+	}
+
+	if trader.Bids[1].Id != "baz" {
+		t.Errorf("expect last bid id to be %s, got %s", "baz", trader.Bids[1].Id)
+	}
+
+	if len(trader.Asks) != 0 {
+		t.Errorf("expect %d ask, got %d", 1, len(trader.Asks))
+	}
+}
 
 func TestPersistence(t *testing.T) {
 	market := &FakeMarket{Name: "BTC_TESTING", ExistsValue: true}

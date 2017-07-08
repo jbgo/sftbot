@@ -43,13 +43,6 @@ type MarketData struct {
 	VolatilityIndex float64
 }
 
-type Order struct {
-	Type    string
-	Price   float64
-	Amount  float64
-	Cleared bool
-}
-
 type Trade struct {
 	Date     int64
 	Type     string
@@ -156,21 +149,32 @@ func (t *Trader) LoadBalances() (err error) {
 	return nil
 }
 
-func (t *Trader) Reconcile() (err error) {
-	// TODO
-	// load bids and asks
-	// get open orders
-	// for each bid:
-	//   if bid not in open orders, bid.Cleared = true
-	// for each ask:
-	//   if ask not in open orders, ask.Cleared = true
-	// bids, err := data.Store.LoadBids("")
-	// if err != nil {
-	//   return nil
-	// }
-	// t.Bids = bids
+func (t *Trader) Reconcile() error {
+	pendingOrders, err := t.Market.GetPendingOrders()
+
+	if err != nil {
+		return err
+	}
+
+	t.Bids = removeFilledOrders(pendingOrders, t.Bids)
+	t.Asks = removeFilledOrders(pendingOrders, t.Asks)
 
 	return nil
+}
+
+func removeFilledOrders(pendingOrders, staleBids []*Order) (freshBids []*Order) {
+	freshBids = make([]*Order, 0, len(pendingOrders))
+
+	for _, bid := range staleBids {
+		for _, order := range pendingOrders {
+			if bid.Id == order.Id {
+				freshBids = append(freshBids, order)
+				break
+			}
+		}
+	}
+
+	return freshBids
 }
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
@@ -245,19 +249,19 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 }
 
 func (t *Trader) ShouldSell(marketData *MarketData) bool {
-	var lastClearedBid *Order
+	var lastTrade *Order
 
 	for _, bid := range t.Bids {
-		if bid.Cleared {
-			lastClearedBid = bid
+		if bid.Filled {
+			lastTrade = bid
 		}
 	}
 
-	if lastClearedBid == nil {
+	if lastTrade == nil {
 		return false
 	}
 
-	return marketData.CurrentPrice > lastClearedBid.Price*t.SellThreshold
+	return marketData.CurrentPrice > lastTrade.Price*t.SellThreshold
 }
 
 func (t *Trader) BuildSellOrder(marketData *MarketData) (*Order, error) {

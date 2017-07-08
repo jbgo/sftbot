@@ -30,6 +30,15 @@ type TickerEntry struct {
 	QuoteVolume   float64
 }
 
+type Order struct {
+	Id     string
+	Type   string
+	Price  float64
+	Amount float64
+	Total  float64
+	Filled bool
+}
+
 type Exchange interface {
 	GetMarket(marketName string) (market Market, err error)
 	GetTicker(marketName string) (ticker []*TickerEntry, err error)
@@ -43,4 +52,5 @@ type Market interface {
 	GetCurrentPrice() (float64, error)
 	GetSummaryData(startTime, endTime int64) (summaryData []*SummaryData, err error)
 	GetTradeHistory(startTime, endTime int64) ([]*Trade, error)
+	GetPendingOrders() ([]*Order, error)
 }
