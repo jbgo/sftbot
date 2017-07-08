@@ -2,6 +2,8 @@ package db
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -15,17 +17,10 @@ func TestBoltStore(t *testing.T) {
 	dbFile := bucketName + ".db"
 
 	store, err := NewBoltStore(bucketName, dbFile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	if store.BucketName != bucketName {
-		t.Errorf("expected store.BucketName to be '%s', got '%s'", bucketName, store.BucketName)
-	}
-
-	if store.DBFile != dbFile {
-		t.Errorf("expected store.DBFile to be '%s', got '%s'", dbFile, store.DBFile)
-	}
+	assert.Equal(t, bucketName, store.BucketName)
+	assert.Equal(t, dbFile, store.DBFile)
 
 	bolts := []*lightningBolt{
 		&lightningBolt{"high", "near"},
@@ -34,54 +29,33 @@ func TestBoltStore(t *testing.T) {
 	}
 
 	err = store.Write("foo", bolts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	bolts = make([]*lightningBolt, 0)
 	err = store.Read("foo", &bolts)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	if len(bolts) != 3 {
-		t.Errorf("expecting %d bolts, got %d", 3, len(bolts))
-	}
+	assert.Equal(t, 3, len(bolts))
 
 	summary := ""
 	for _, b := range bolts {
 		summary += fmt.Sprintf("%s/%s ", b.Intensity, b.Distance)
 	}
 
-	expectedSummary := "high/near medium/near low/far "
-	if summary != expectedSummary {
-		t.Errorf("expecting '%s' to equal '%s'", summary, expectedSummary)
-	}
+	assert.Equal(t, "high/near medium/near low/far ", summary)
 
 	err, ok := store.HasData("foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok != true {
-		t.Error("expect HasData to be true")
-	}
+	require.Nil(t, err)
+	assert.True(t, ok)
 
 	err = store.Delete("foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	err, ok = store.HasData("foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ok != false {
-		t.Error("expect HasData to be false")
-	}
+	require.Nil(t, err)
+	assert.False(t, ok)
 
 	bolts = make([]*lightningBolt, 0)
 	err = store.Read("foo", &bolts)
-	if err == nil {
-		t.Fatal("expecting error, got none")
-	}
+	require.NotNil(t, err)
 }

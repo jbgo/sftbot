@@ -1,7 +1,8 @@
 package trading
 
 import (
-	"math"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -11,15 +12,9 @@ func TestNewTrader(t *testing.T) {
 	exchange := &FakeExchange{Market: market}
 
 	trader, err := NewTrader("BTC_ABC", exchange)
-	if err != nil {
-		t.Fatal("ERROR", err)
-	}
+	require.Nil(t, err)
 
-	expected := "ABC"
-	actual := trader.Market.GetCurrency()
-	if actual != "ABC" {
-		t.Errorf("expect to trade currency %s, got %s", expected, actual)
-	}
+	assert.Equal(t, "ABC", trader.Market.GetCurrency())
 }
 
 func TestNewTraderUnknownMarket(t *testing.T) {
@@ -28,13 +23,8 @@ func TestNewTraderUnknownMarket(t *testing.T) {
 
 	trader, err := NewTrader("BTC_QWERTY", exchange)
 
-	if err == nil {
-		t.Error("expect NewTrader() to fail for unknown market")
-	}
-
-	if trader != nil {
-		t.Error("expect trader to be nil for unknown market")
-	}
+	require.NotNil(t, err)
+	require.Nil(t, trader)
 }
 
 func TestShouldBuy(t *testing.T) {
@@ -49,42 +39,29 @@ func TestShouldBuy(t *testing.T) {
 	marketData.Percentiles[trader.BuyThreshold] = 0.004132
 	marketData.CurrentPrice = 0.004029
 
-	if !trader.ShouldBuy(marketData) {
-		t.Error("expect ShouldBuy() to be true when market conditions are favorable")
-	}
+	assert.True(t, trader.ShouldBuy(marketData))
 
 	marketData.CurrentPrice = 0.004177
 
-	if trader.ShouldBuy(marketData) {
-		t.Error("expect ShouldBuy() to be false when current price is above threshold")
-	}
+	assert.False(t, trader.ShouldBuy(marketData))
 
 	marketData.CurrentPrice = 0.004029
 	marketData.VolatilityIndex = 1.019
 
-	if trader.ShouldBuy(marketData) {
-		t.Error("expect ShouldBuy() to be false when market conditions are not favorable")
-	}
+	assert.False(t, trader.ShouldBuy(marketData))
 }
 
 func TestCanBuy(t *testing.T) {
 	btcBalance := &Balance{Available: 2.5}
-
 	trader := &Trader{BTC_Balance: btcBalance}
-
 	trader.EstimatedFee = 0.0025
-
 	order := &Order{Price: 0.025, Amount: 100}
 
-	if trader.CanBuy(order) {
-		t.Error("expect CanBuy() to be false when not enough money is available")
-	}
+	assert.False(t, trader.CanBuy(order))
 
 	btcBalance.Available = 2.51
 
-	if !trader.CanBuy(order) {
-		t.Error("expect CanBuy() to be true when plenty of money is available")
-	}
+	assert.True(t, trader.CanBuy(order))
 }
 
 func TestBuildBuyOrder(t *testing.T) {
@@ -93,21 +70,9 @@ func TestBuildBuyOrder(t *testing.T) {
 
 	order := trader.BuildBuyOrder(marketData)
 
-	if order.Type != "buy" {
-		t.Error("expect order.Type to be 'buy', got", order.Type)
-	}
-
-	expected := 0.0039004
-	if order.Price != expected {
-		t.Errorf("expect order.Price to equal %.9f, got %.9f", expected, order.Price)
-	}
-
-	precision := math.Pow(10, 9)
-	expected = math.Floor(3.204799507742796*precision) / precision
-	actual := math.Floor(order.Amount*precision) / precision
-	if actual != expected {
-		t.Errorf("expect order.Amount to equal %.9f, got %.9f", expected, actual)
-	}
+	assert.Equal(t, "buy", order.Type)
+	assert.InDelta(t, 0.0039004, order.Price, 0.00000001)
+	assert.InDelta(t, 3.2047995, order.Amount, 0.00000001)
 }
 
 func TestLoadMarketData(t *testing.T) {
@@ -127,30 +92,19 @@ func TestLoadMarketData(t *testing.T) {
 	exchange := &FakeExchange{Market: market}
 
 	trader, err := NewTrader(market.Name, exchange)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	marketData, err := trader.LoadMarketData()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	expected := market.CurrentPrice
-	if marketData.CurrentPrice != expected {
-		t.Errorf("expect current price %f, got %f", expected, market.CurrentPrice)
-	}
+	assert.Equal(t, market.CurrentPrice, marketData.CurrentPrice)
 
-	expected = 1.02531
-	actual := math.Floor(marketData.VolatilityIndex*math.Pow(10, 5)) / math.Pow(10, 5)
-	if actual != expected {
-		t.Errorf("expect volatility index %f, got %f", expected, actual)
-	}
+	assert.InDelta(t, 1.025316, marketData.VolatilityIndex, 0.000001)
 
 	for i := 1; i <= 100; i += 1 {
-		if marketData.Percentiles[i] < marketData.Percentiles[i-1] {
-			t.Errorf("expect pct_%d (%f) to be > pct_%d (%f)", i, marketData.Percentiles[i], i-1, marketData.Percentiles[i-1])
-		}
+		assert.Condition(t, func() bool {
+			return marketData.Percentiles[i] >= marketData.Percentiles[i-1]
+		}, "expect pct_%d (%f) to be >= pct_%d (%f)", i, marketData.Percentiles[i], i-1, marketData.Percentiles[i-1])
 	}
 
 	t.Logf("pct_%d -> %f", 45, marketData.Percentiles[45])
@@ -168,21 +122,15 @@ func TestShouldSell(t *testing.T) {
 
 	marketData := &MarketData{CurrentPrice: 0.107}
 
-	if !trader.ShouldSell(marketData) {
-		t.Error("expect ShouldSell() to be true when there is money to be made")
-	}
+	assert.True(t, trader.ShouldSell(marketData))
 
 	marketData.CurrentPrice = 0.105
 
-	if trader.ShouldSell(marketData) {
-		t.Error("expect ShouldSell() to be false when it's better to hold")
-	}
+	assert.False(t, trader.ShouldSell(marketData))
 
 	trader.Bids = []*Order{}
 
-	if trader.ShouldSell(marketData) {
-		t.Error("expect ShouldSell() to be false when there's nothing to sell")
-	}
+	assert.False(t, trader.ShouldSell(marketData))
 }
 
 func TestBuildSellOrder(t *testing.T) {
@@ -194,33 +142,18 @@ func TestBuildSellOrder(t *testing.T) {
 	}
 
 	trader, err := NewTrader("BTC_ABC", exchange)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
+
 	trader.ALT_SellRatio = 0.5
 	trader.EstimatedFee = 0.005
 	trader.ALT_Balance = &Balance{Available: 100.0}
 
 	order, err := trader.BuildSellOrder(marketData)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	if order.Type != "sell" {
-		t.Error("expect order.Type to be 'buy', got", order.Type)
-	}
-
-	expected := 50.0
-	if order.Amount != expected {
-		t.Errorf("expect order.Amount to equal %f, got %f", expected, order.Amount)
-	}
-
-	precision := math.Pow(10, 7)
-	expected = 0.1075350
-	actual := math.Floor(order.Price*precision) / precision
-	if actual != expected {
-		t.Errorf("expect order.Price to equal %.9f, got %.9f", expected, actual)
-	}
+	assert.Equal(t, "sell", order.Type)
+	assert.Equal(t, 50.0, order.Amount)
+	assert.InDelta(t, 0.1075350, order.Price, 0.00000001)
 
 	// Test minimum sell amount
 	trader.BTC_BuyAmount = 0.1
@@ -228,16 +161,9 @@ func TestBuildSellOrder(t *testing.T) {
 	trader.ALT_Balance.Available = 6.0
 
 	order, err = trader.BuildSellOrder(marketData)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	precision = 1000
-	expected = 3.980
-	actual = math.Floor(order.Amount*precision) / precision
-	if actual != expected {
-		t.Errorf("expect order.Amount to equal %.9f, got %.9f", expected, actual)
-	}
+	assert.InDelta(t, 3.980, order.Amount, 0.001)
 }
 
 func TestCanSell(t *testing.T) {
@@ -247,15 +173,13 @@ func TestCanSell(t *testing.T) {
 
 	altBalance.Available = 10.0
 	order.Amount = 10.0
-	if !trader.CanSell(order) {
-		t.Errorf("expect CanSell() to be true when balance is sufficient")
-	}
+
+	assert.True(t, trader.CanSell(order))
 
 	altBalance.Available = 9.99
 	order.Amount = 10.0
-	if trader.CanSell(order) {
-		t.Errorf("expect CanSell() to be false when balance is deficient")
-	}
+
+	assert.False(t, trader.CanSell(order))
 }
 
 func TestLoadBalances(t *testing.T) {
@@ -285,38 +209,21 @@ func TestLoadBalances(t *testing.T) {
 	}
 
 	trader, err := NewTrader(market.Name, exchange)
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	err = trader.LoadBalances()
+	require.Nil(t, err)
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	actual := trader.BTC_Balance.Available
-	expected := balances["BTC"].Available
-	if actual != expected {
-		t.Errorf("expect BTC balance to equal %f, got %f", expected, actual)
-	}
-
-	actual = trader.ALT_Balance.Available
-	expected = balances["XYZ"].Available
-	if actual != expected {
-		t.Errorf("expect ALT balance to equal %f, got %f", expected, actual)
-	}
+	assert.Equal(t, balances["BTC"].Available, trader.BTC_Balance.Available)
+	assert.Equal(t, balances["XYZ"].Available, trader.ALT_Balance.Available)
 }
 
 func TestReconcile(t *testing.T) {
 	market := &FakeMarket{Name: "BTC_XYZ", ExistsValue: true}
 	exchange := &FakeExchange{Market: market}
-	trader, err := NewTrader(market.Name, exchange)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	trader, err := NewTrader(market.Name, exchange)
+	require.Nil(t, err)
 
 	trader.Bids = []*Order{
 		&Order{Id: "foo", Price: 0.24},
@@ -334,25 +241,13 @@ func TestReconcile(t *testing.T) {
 	}
 
 	err = trader.Reconcile()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	if len(trader.Bids) != 2 {
-		t.Errorf("expect %d bids, got %d", 2, len(trader.Bids))
-	}
+	assert.Equal(t, 2, len(trader.Bids))
+	assert.Equal(t, "foo", trader.Bids[0].Id)
+	assert.Equal(t, "baz", trader.Bids[1].Id)
 
-	if trader.Bids[0].Id != "foo" {
-		t.Errorf("expect first bid id to be %s, got %s", "foo", trader.Bids[0].Id)
-	}
-
-	if trader.Bids[1].Id != "baz" {
-		t.Errorf("expect last bid id to be %s, got %s", "baz", trader.Bids[1].Id)
-	}
-
-	if len(trader.Asks) != 0 {
-		t.Errorf("expect %d ask, got %d", 1, len(trader.Asks))
-	}
+	assert.Equal(t, 0, len(trader.Asks))
 }
 
 func TestPersistence(t *testing.T) {
@@ -360,16 +255,12 @@ func TestPersistence(t *testing.T) {
 	exchange := &FakeExchange{Market: market}
 
 	trader, err := NewTrader(market.Name, exchange)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	trader.DB.Delete(trader.StateKey)
 
 	err = trader.LoadState()
-	if err != nil {
-		t.Fatal("expecting NO error, got", err)
-	}
+	require.Nil(t, err)
 
 	trader.BuyThreshold = 36
 	trader.SellThreshold = 1.123
@@ -382,38 +273,25 @@ func TestPersistence(t *testing.T) {
 	}
 
 	err = trader.SaveState()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	trader, err = NewTrader(market.Name, exchange)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
 	err = trader.LoadState()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 
-	if trader.BuyThreshold != 36 {
-		t.Errorf("expect BuyThreshold to be %d, got %d", 36, trader.BuyThreshold)
-	}
-
-	if trader.SellThreshold != 1.123 {
-		t.Errorf("expect SellThreshold to be %f, got %f", 1.123, trader.SellThreshold)
-	}
-
-	if len(trader.Bids) != 2 {
-		t.Errorf("expect %d Bids, got %d", 2, len(trader.Bids))
-	}
-
-	if len(trader.Asks) != 1 {
-		t.Errorf("expect %d Asks, got %d", 1, len(trader.Asks))
-	}
-
-	lastBid := trader.Bids[1].Price
-	if lastBid != 0.2 {
-		t.Errorf("expect last bid price to be %f, got %f", 0.2, lastBid)
-	}
+	assert.Equal(t, 36, int(trader.BuyThreshold))
+	assert.Equal(t, 1.123, trader.SellThreshold)
+	assert.Equal(t, 2, len(trader.Bids))
+	assert.Equal(t, 1, len(trader.Asks))
+	assert.Equal(t, 0.2, trader.Bids[1].Price)
 }
+
+// func TestBuy(t *testing.T) {
+// 	t.Fatal("TODO")
+// }
+
+// func TestSell(t *testing.T) {
+// 	t.Fatal("TODO")
+// }
