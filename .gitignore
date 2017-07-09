@@ -2,3 +2,4 @@ sftbot
 *.db
 .creds.json
 coverage.out
+tmp/

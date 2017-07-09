@@ -1,16 +1,23 @@
 GO_TEST = go test -coverprofile=coverage.out
 REPO = github.com/jbgo/sftbot
 
+default: build test coverage
+
 build: *.go command/*.go
 	go build -o sftbot *.go
 
-coverage:
-	go tool cover -html=coverage.out
+coverage: coverage/db coverage/trading
+
+coverage/db:
+	go tool cover -html=tmp/db.coverage -o tmp/db.coverage.html
+
+coverage/trading:
+	go tool cover -html=tmp/trading.coverage -o tmp/trading.coverage.html
 
 test: test/trading test/db
 
-test/trading:
-	$(GO_TEST) $(REPO)/trading
-
 test/db:
-	$(GO_TEST) $(REPO)/db
+	go test -coverprofile=tmp/db.coverage $(REPO)/db
+
+test/trading:
+	go test -coverprofile=tmp/trading.coverage $(REPO)/trading
