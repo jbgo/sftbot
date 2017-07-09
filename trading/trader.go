@@ -263,11 +263,17 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 }
 
 func (t *Trader) ShouldSell(marketData *MarketData) bool {
-	if len(t.Bids) == 0 {
-		return false
+	var lastTrade *Order
+
+	for _, bid := range t.Bids {
+		if bid.Filled {
+			lastTrade = bid
+		}
 	}
 
-	lastTrade := t.Bids[len(t.Bids)-1]
+	if lastTrade == nil {
+		return false
+	}
 
 	return marketData.CurrentPrice > lastTrade.Price*t.SellThreshold
 }

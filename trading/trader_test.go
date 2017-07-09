@@ -121,7 +121,8 @@ func TestTrader(t *testing.T) {
 		trader := Trader{
 			SellThreshold: 1.06,
 			Bids: []*Order{
-				&Order{Price: 0.1},
+				&Order{Price: 0.1, Filled: true},
+				&Order{Price: 0.01, Filled: false},
 			},
 		}
 
@@ -133,7 +134,7 @@ func TestTrader(t *testing.T) {
 
 		assert.False(t, trader.ShouldSell(marketData))
 
-		trader.Bids = []*Order{}
+		trader.Bids[0].Filled = false
 
 		assert.False(t, trader.ShouldSell(marketData))
 	})
@@ -379,47 +380,64 @@ func TestTrader(t *testing.T) {
 	t.Run("Sell", func(t *testing.T) {
 		market := &FakeMarket{Name: "BTC_ABC", ExistsValue: true}
 		exchange := &FakeExchange{Market: market}
-		marketData := &MarketData{}
+		marketData := &MarketData{CurrentPrice: 0.05}
+		lastBid := &Order{Filled: true}
 
 		trader, err := NewTrader(market.Name, exchange, dbStore)
+		require.Nil(t, err)
+
 		trader.SellThreshold = 1.06
-
-		// Case #1 should not sell
-		marketData.CurrentPrice = 0.05
-		lastBid := &Order{Price: 0.053}
+		trader.ALT_Balance = &Balance{}
 		trader.Bids = []*Order{lastBid}
-		order, err := trader.Sell(marketData)
-		require.Nil(t, err)
-		require.Nil(t, order)
-		assert.Equal(t, 1.06, trader.SellThreshold)
-		assert.Equal(t, int64(50), trader.BuyThreshold)
 
-		// Case #2 can't sell
-		trader.ALT_Balance = &Balance{Available: 0.0}
-		lastBid.Price = 0.04
-		order, err = trader.Sell(marketData)
-		require.Nil(t, err)
-		require.Nil(t, order)
-		assert.Equal(t, 1.06, trader.SellThreshold)
-		assert.Equal(t, int64(50), trader.BuyThreshold)
+		t.Run("should not sell", func(t *testing.T) {
+			lastBid.Price = 0.053
 
-		// Case #3 error with sell
-		market.TriggerSellError = true
-		trader.ALT_Balance.Available = 400.0
-		order, err = trader.Sell(marketData)
-		require.NotNil(t, err)
-		require.NotNil(t, order)
-		assert.Equal(t, "fake sell error", err.Error())
-		assert.Equal(t, 1.06, trader.SellThreshold)
-		assert.Equal(t, int64(50), trader.BuyThreshold)
+			order, err := trader.Sell(marketData)
 
-		// Case #4 sell your coins
-		market.TriggerSellError = false
-		trader.BuyThreshold = 42
-		order, err = trader.Sell(marketData)
-		require.Nil(t, err)
-		require.NotNil(t, order)
-		assert.Equal(t, 1.07, trader.SellThreshold)
-		assert.Equal(t, int64(44), trader.BuyThreshold)
+			require.Nil(t, err)
+			require.Nil(t, order)
+			assert.Equal(t, 1.06, trader.SellThreshold)
+			assert.Equal(t, int64(50), trader.BuyThreshold)
+		})
+
+		t.Run("cannot sell", func(t *testing.T) {
+			trader.ALT_Balance.Available = 0.0
+			lastBid.Price = 0.04
+
+			order, err := trader.Sell(marketData)
+
+			require.Nil(t, err)
+			require.Nil(t, order)
+			assert.Equal(t, 1.06, trader.SellThreshold)
+			assert.Equal(t, int64(50), trader.BuyThreshold)
+		})
+
+		t.Run("sell error", func(t *testing.T) {
+			market.TriggerSellError = true
+			trader.ALT_Balance.Available = 400.0
+			lastBid.Price = 0.04
+
+			order, err := trader.Sell(marketData)
+
+			require.NotNil(t, err)
+			require.NotNil(t, order)
+			assert.Equal(t, "fake sell error", err.Error())
+			assert.Equal(t, 1.06, trader.SellThreshold)
+			assert.Equal(t, int64(50), trader.BuyThreshold)
+		})
+
+		t.Run("sell your coins", func(t *testing.T) {
+			market.TriggerSellError = false
+			trader.BuyThreshold = 42
+			lastBid.Price = 0.04
+
+			order, err := trader.Sell(marketData)
+
+			require.Nil(t, err)
+			require.NotNil(t, order)
+			assert.Equal(t, 1.07, trader.SellThreshold)
+			assert.Equal(t, int64(44), trader.BuyThreshold)
+		})
 	})
 }
