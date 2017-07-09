@@ -3,9 +3,7 @@ package trading
 import (
 	"fmt"
 	"github.com/jbgo/sftbot/db"
-	// "github.com/jbgo/sftbot/plx"
 	"log"
-	// "math"
 	"sort"
 	"time"
 )
