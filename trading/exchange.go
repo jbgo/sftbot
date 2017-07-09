@@ -36,6 +36,7 @@ type Order struct {
 	Price  float64
 	Amount float64
 	Total  float64
+	Filled bool
 }
 
 type Exchange interface {

@@ -156,25 +156,39 @@ func (t *Trader) Reconcile() error {
 		return err
 	}
 
-	t.Bids = removeFilledOrders(pendingOrders, t.Bids)
-	t.Asks = removeFilledOrders(pendingOrders, t.Asks)
+	markFilledBids(pendingOrders, t.Bids)
+
+	t.Asks = removeFilledAsks(pendingOrders, t.Asks)
 
 	return nil
 }
 
-func removeFilledOrders(pendingOrders, staleBids []*Order) (freshBids []*Order) {
-	freshBids = make([]*Order, 0, len(pendingOrders))
+func markFilledBids(pendingOrders, bids []*Order) {
+	for _, bid := range bids {
+		bid.Filled = true
 
-	for _, bid := range staleBids {
 		for _, order := range pendingOrders {
 			if bid.Id == order.Id {
-				freshBids = append(freshBids, order)
+				bid.Filled = false
+				break
+			}
+		}
+	}
+}
+
+func removeFilledAsks(pendingOrders, staleAsks []*Order) (freshAsks []*Order) {
+	freshAsks = make([]*Order, 0, len(pendingOrders))
+
+	for _, ask := range staleAsks {
+		for _, order := range pendingOrders {
+			if ask.Id == order.Id {
+				freshAsks = append(freshAsks, order)
 				break
 			}
 		}
 	}
 
-	return freshBids
+	return freshAsks
 }
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {

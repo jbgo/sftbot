@@ -226,9 +226,9 @@ func TestReconcile(t *testing.T) {
 	require.Nil(t, err)
 
 	trader.Bids = []*Order{
-		&Order{Id: "foo", Price: 0.24},
-		&Order{Id: "bar", Price: 0.19},
-		&Order{Id: "baz", Price: 0.27},
+		&Order{Id: "foo", Price: 0.24, Filled: false},
+		&Order{Id: "bar", Price: 0.19, Filled: false},
+		&Order{Id: "baz", Price: 0.27, Filled: false},
 	}
 
 	trader.Asks = []*Order{
@@ -236,17 +236,25 @@ func TestReconcile(t *testing.T) {
 	}
 
 	market.PendingOrders = []*Order{
-		&Order{Id: "foo", Price: 0.24},
 		&Order{Id: "baz", Price: 0.27},
 	}
 
 	err = trader.Reconcile()
 	require.Nil(t, err)
 
-	assert.Equal(t, 2, len(trader.Bids))
-	assert.Equal(t, "foo", trader.Bids[0].Id)
-	assert.Equal(t, "baz", trader.Bids[1].Id)
+	// keep bids and mark as filled
+	assert.Equal(t, 3, len(trader.Bids))
 
+	assert.Equal(t, "foo", trader.Bids[0].Id)
+	assert.True(t, trader.Bids[0].Filled)
+
+	assert.Equal(t, "bar", trader.Bids[1].Id)
+	assert.True(t, trader.Bids[1].Filled)
+
+	assert.Equal(t, "baz", trader.Bids[2].Id)
+	assert.False(t, trader.Bids[2].Filled)
+
+	// remove asks, don't care once filled
 	assert.Equal(t, 0, len(trader.Asks))
 }
 
