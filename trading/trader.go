@@ -55,12 +55,7 @@ type Trade struct {
 	Metadata interface{}
 }
 
-func NewTrader(marketName string, exchange Exchange) (trader *Trader, err error) {
-	dbStore, err := db.NewBoltStore("trader_"+marketName, "trading.db")
-	if err != nil {
-		return nil, err
-	}
-
+func NewTrader(marketName string, exchange Exchange, dbStore db.Store) (trader *Trader, err error) {
 	market, err := exchange.GetMarket(marketName)
 	if err != nil {
 		return nil, err

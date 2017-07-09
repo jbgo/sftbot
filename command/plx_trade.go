@@ -18,6 +18,7 @@ package command
 import (
 	"flag"
 	"fmt"
+	"github.com/jbgo/sftbot/db"
 	"github.com/jbgo/sftbot/trading"
 	"log"
 	"time"
@@ -59,8 +60,14 @@ func (c *TradeCommand) Run(args []string) int {
 		return 1
 	}
 
+	dbStore, err := db.NewBoltStore(c.Market, "tmp/sftbot.db")
+	if err != nil {
+		fmt.Println("[error]", err)
+		return 1
+	}
+
 	plxExchange := &trading.PlxExchange{}
-	trader, err := trading.NewTrader(c.Market, plxExchange)
+	trader, err := trading.NewTrader(c.Market, plxExchange, dbStore)
 
 	if err != nil {
 		fmt.Println("[error]", err)
