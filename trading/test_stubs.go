@@ -18,7 +18,6 @@ type FakeMarket struct {
 	ExistsValue      bool
 	CurrentPrice     float64
 	SummaryData      []*SummaryData
-	TradeHistory     []*Trade
 	PendingOrders    []*Order
 	TriggerBuyError  bool
 	TriggerSellError bool
@@ -42,10 +41,6 @@ func (market *FakeMarket) GetCurrentPrice() (float64, error) {
 
 func (market *FakeMarket) GetSummaryData(startTime, endTime int64) ([]*SummaryData, error) {
 	return market.SummaryData, nil
-}
-
-func (market *FakeMarket) GetTradeHistory(startTime, endTime int64) ([]*Trade, error) {
-	return market.TradeHistory, nil
 }
 
 func (market *FakeMarket) GetPendingOrders() ([]*Order, error) {
@@ -78,17 +73,11 @@ func (market *FakeMarket) Sell(order *Order) error {
 
 type FakeExchange struct {
 	Market   Market
-	Ticker   map[string][]*TickerEntry
 	Balances map[string]*Balance
 }
 
 func (exchange *FakeExchange) GetMarket(marketName string) (Market, error) {
 	return exchange.Market, nil
-}
-
-func (exchange *FakeExchange) GetTicker(marketName string) ([]*TickerEntry, error) {
-	ticker, _ := exchange.Ticker[marketName]
-	return ticker, nil
 }
 
 func (exchange *FakeExchange) GetBalance(currency string) (*Balance, error) {

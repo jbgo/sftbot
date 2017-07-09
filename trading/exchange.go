@@ -41,7 +41,6 @@ type Order struct {
 
 type Exchange interface {
 	GetMarket(marketName string) (market Market, err error)
-	GetTicker(marketName string) (ticker []*TickerEntry, err error)
 	GetBalance(currency string) (*Balance, error)
 }
 
@@ -53,6 +52,5 @@ type Market interface {
 	GetName() string
 	GetPendingOrders() ([]*Order, error)
 	GetSummaryData(startTime, endTime int64) (summaryData []*SummaryData, err error)
-	GetTradeHistory(startTime, endTime int64) ([]*Trade, error)
 	Sell(order *Order) error
 }

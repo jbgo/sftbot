@@ -5,7 +5,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 func TestTrader(t *testing.T) {
@@ -188,18 +187,9 @@ func TestTrader(t *testing.T) {
 	})
 
 	t.Run("LoadBalances", func(t *testing.T) {
-		tradeHistory := []*Trade{
-			&Trade{Date: time.Now().Unix() - (3 * 60 * 60), Price: 0.42},
-		}
-
 		market := &FakeMarket{
-			Name:         "BTC_XYZ",
-			ExistsValue:  true,
-			TradeHistory: tradeHistory,
-		}
-
-		ticker := map[string][]*TickerEntry{
-			"BTC_XYZ": []*TickerEntry{&TickerEntry{Last: 0.105}},
+			Name:        "BTC_XYZ",
+			ExistsValue: true,
 		}
 
 		balances := map[string]*Balance{
@@ -209,7 +199,6 @@ func TestTrader(t *testing.T) {
 
 		exchange := &FakeExchange{
 			Market:   market,
-			Ticker:   ticker,
 			Balances: balances,
 		}
 

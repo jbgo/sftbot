@@ -129,7 +129,7 @@ type TickerEntry struct {
 	QuoteVolume   float64 `json:",string"`
 }
 
-func GetTicker() (ticker []TickerEntry, err error) {
+func GetTickerMap() (ticker map[string]TickerEntry, err error) {
 	url := fmt.Sprintf("%s?command=returnTicker", PUBLIC_API_URL)
 
 	resp, err := http.Get(url)
@@ -144,13 +144,18 @@ func GetTicker() (ticker []TickerEntry, err error) {
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	respData := make(map[string]TickerEntry)
-	err = json.Unmarshal(body, &respData)
+	ticker = make(map[string]TickerEntry)
+	err = json.Unmarshal(body, &ticker)
+	return ticker, err
+}
+
+func GetTicker() (ticker []TickerEntry, err error) {
+	tickerMap, err := GetTickerMap()
 	if err != nil {
-		return ticker, err
+		return nil, err
 	}
 
-	for k, v := range respData {
+	for k, v := range tickerMap {
 		v.Market = k
 		ticker = append(ticker, v)
 	}
