@@ -388,9 +388,9 @@ func TestTrader(t *testing.T) {
 
 		trader.SellThreshold = 1.06
 		trader.ALT_Balance = &Balance{}
-		trader.Bids = []*Order{lastBid}
 
 		t.Run("should not sell", func(t *testing.T) {
+			trader.Bids = []*Order{lastBid}
 			lastBid.Price = 0.053
 
 			order, err := trader.Sell(marketData)
@@ -402,6 +402,7 @@ func TestTrader(t *testing.T) {
 		})
 
 		t.Run("cannot sell", func(t *testing.T) {
+			trader.Bids = []*Order{lastBid}
 			trader.ALT_Balance.Available = 0.0
 			lastBid.Price = 0.04
 
@@ -414,6 +415,7 @@ func TestTrader(t *testing.T) {
 		})
 
 		t.Run("sell error", func(t *testing.T) {
+			trader.Bids = []*Order{lastBid}
 			market.TriggerSellError = true
 			trader.ALT_Balance.Available = 400.0
 			lastBid.Price = 0.04
@@ -425,9 +427,15 @@ func TestTrader(t *testing.T) {
 			assert.Equal(t, "fake sell error", err.Error())
 			assert.Equal(t, 1.06, trader.SellThreshold)
 			assert.Equal(t, int64(50), trader.BuyThreshold)
+			assert.Equal(t, 1, len(trader.Bids))
 		})
 
 		t.Run("sell your coins", func(t *testing.T) {
+			trader.Bids = []*Order{
+				&Order{Price: 0.06, Filled: true},
+				lastBid,
+				&Order{Price: 0.03, Filled: false},
+			}
 			market.TriggerSellError = false
 			trader.BuyThreshold = 42
 			lastBid.Price = 0.04
@@ -438,6 +446,9 @@ func TestTrader(t *testing.T) {
 			require.NotNil(t, order)
 			assert.Equal(t, 1.07, trader.SellThreshold)
 			assert.Equal(t, int64(44), trader.BuyThreshold)
+			assert.Equal(t, 2, len(trader.Bids))
+			assert.Equal(t, 0.06, trader.Bids[0].Price)
+			assert.Equal(t, 0.03, trader.Bids[1].Price)
 		})
 	})
 }

@@ -253,6 +253,8 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 		return order, err
 	}
 
+	t.Bids = removeLastFilledBid(t.Bids)
+
 	if t.BuyThreshold < 50 {
 		t.BuyThreshold += 2
 	}
@@ -260,6 +262,18 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 	t.SellThreshold += 0.01
 
 	return order, nil
+}
+
+func removeLastFilledBid(bids []*Order) []*Order {
+	index := -1
+
+	for i, bid := range bids {
+		if bid.Filled {
+			index = i
+		}
+	}
+
+	return append(bids[:index], bids[index+1:]...)
 }
 
 func (t *Trader) ShouldSell(marketData *MarketData) bool {
