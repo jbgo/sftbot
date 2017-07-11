@@ -72,6 +72,8 @@ func (c *ChartDataImportCommand) Run(args []string) int {
 
 	defer db.Close()
 
+	client := plx.Client{BaseUrl: plx.LIVE_URL}
+
 	params := plx.ChartDataParams{
 		CurrencyPair: c.CurrencyPair,
 		Period:       c.Resolution,
@@ -89,7 +91,7 @@ func (c *ChartDataImportCommand) Run(args []string) int {
 
 		log.Printf("loading chart data for %v - %v", time.Unix(params.Start, 0), time.Unix(params.End, 0))
 
-		chartData, err := plx.GetChartData(&params)
+		chartData, err := client.GetChartData(&params)
 
 		if err != nil {
 			log.Println(err)

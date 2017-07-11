@@ -32,6 +32,8 @@ func (c *ChartDataGetCommand) Run(args []string) int {
 	endTime := time.Now().Unix()
 	startTime := endTime - (60 * 60 * 24 * 1)
 
+	client := plx.Client{BaseUrl: plx.LIVE_URL}
+
 	params := plx.ChartDataParams{
 		CurrencyPair: "BTC_XRP",
 		Start:        startTime,
@@ -39,7 +41,7 @@ func (c *ChartDataGetCommand) Run(args []string) int {
 		Period:       300,
 	}
 
-	data, err := plx.GetChartData(&params)
+	data, err := client.GetChartData(&params)
 
 	if err != nil {
 		log.Println(err)

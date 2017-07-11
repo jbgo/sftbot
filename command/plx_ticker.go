@@ -38,7 +38,9 @@ func (c *TickerCommand) Run(args []string) int {
 	c.InitFlags()
 	c.Flags.Parse(args)
 
-	ticker, err := plx.GetTicker()
+	client := plx.Client{BaseUrl: plx.LIVE_URL}
+
+	ticker, err := client.GetTicker()
 
 	if err != nil {
 		log.Panic(err)

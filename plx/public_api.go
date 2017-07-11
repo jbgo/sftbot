@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const PUBLIC_API_URL = "https://poloniex.com/public"
-
 type ChartDataParams struct {
 	CurrencyPair string
 	Start        int64
@@ -30,10 +28,10 @@ func (p *ChartDataParams) ToQueryString() string {
 		p.Period)
 }
 
-func GetChartData(params *ChartDataParams) ([]data.ChartData, error) {
+func (client *Client) GetChartData(params *ChartDataParams) ([]data.ChartData, error) {
 	var sticks []data.ChartData
 
-	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
+	url := fmt.Sprintf("%s?%s", client.PublicApiUrl(), params.ToQueryString())
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -83,8 +81,8 @@ func (p *TradeHistoryParams) ToQueryString() string {
 		"returnTradeHistory", p.Market, p.StartTime, p.EndTime)
 }
 
-func GetTradeHistory(params *TradeHistoryParams) (trades []Trade, err error) {
-	url := fmt.Sprintf("%s?%s", PUBLIC_API_URL, params.ToQueryString())
+func (client *Client) GetTradeHistory(params *TradeHistoryParams) (trades []Trade, err error) {
+	url := fmt.Sprintf("%s?%s", client.PublicApiUrl(), params.ToQueryString())
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -129,8 +127,8 @@ type TickerEntry struct {
 	QuoteVolume   float64 `json:",string"`
 }
 
-func GetTickerMap() (ticker map[string]TickerEntry, err error) {
-	url := fmt.Sprintf("%s?command=returnTicker", PUBLIC_API_URL)
+func (client *Client) GetTickerMap() (ticker map[string]TickerEntry, err error) {
+	url := fmt.Sprintf("%s?command=returnTicker", client.PublicApiUrl())
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -149,8 +147,8 @@ func GetTickerMap() (ticker map[string]TickerEntry, err error) {
 	return ticker, err
 }
 
-func GetTicker() (ticker []TickerEntry, err error) {
-	tickerMap, err := GetTickerMap()
+func (client *Client) GetTicker() (ticker []TickerEntry, err error) {
+	tickerMap, err := client.GetTickerMap()
 	if err != nil {
 		return nil, err
 	}

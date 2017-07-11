@@ -6,14 +6,16 @@ import (
 )
 
 type PlxExchange struct {
+	Client *plx.Client
 }
 
-func NewPlxExchange() Exchange {
-	return &PlxExchange{}
+func NewPlxExchange(baseUrl string) Exchange {
+	client := &plx.Client{BaseUrl: baseUrl}
+	return &PlxExchange{Client: client}
 }
 
 func (exchange *PlxExchange) GetMarket(marketName string) (market Market, err error) {
-	ticker, err := plx.GetTickerMap()
+	ticker, err := exchange.Client.GetTickerMap()
 	_, ok := ticker[marketName]
 
 	if !ok {
@@ -27,12 +29,3 @@ func (exchange *PlxExchange) GetMarket(marketName string) (market Market, err er
 func (exchange *PlxExchange) GetBalance(currency string) (*Balance, error) {
 	return nil, nil
 }
-
-// type PlxMarket struct {
-// 	name string
-// }
-
-// func NewPlxMarket(marketName string) (Market, error) {
-// 	market := &PlxMarket{name: marketName}
-// 	return market, nil
-// }
