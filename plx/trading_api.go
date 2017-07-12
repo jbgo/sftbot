@@ -108,6 +108,30 @@ func (client *Client) AllOpenOrders() (marketOrders map[string][]OpenOrder, err 
 	return marketOrders, err
 }
 
+func (client *Client) GetOpenOrders(currencyPair string) (openOrders []*OpenOrder, err error) {
+	values := &url.Values{}
+	values.Set("command", "returnOpenOrders")
+	values.Set("currencyPair", currencyPair)
+
+	resp, err := client.TradingApiRequest(values)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+	}
+
+	openOrders = make([]*OpenOrder, 0)
+	err = json.Unmarshal(body, &openOrders)
+
+	return openOrders, err
+}
+
 type PlxPrivateTrade struct {
 	GlobalTradeId int64
 	TradeId       string

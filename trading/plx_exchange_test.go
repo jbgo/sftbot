@@ -26,7 +26,6 @@ func TestGetMarket(t *testing.T) {
 
 	defer testServer.Close()
 
-	fmt.Println(credentialsPath())
 	client := plx.NewClient(testServer.URL, credentialsPath())
 	exchange := NewPlxExchange(client)
 

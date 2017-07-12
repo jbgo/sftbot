@@ -1,7 +1,6 @@
 package trading
 
 import (
-	"fmt"
 	"github.com/jbgo/sftbot/plx"
 )
 
@@ -14,15 +13,7 @@ func NewPlxExchange(client *plx.Client) Exchange {
 }
 
 func (exchange *PlxExchange) GetMarket(marketName string) (market Market, err error) {
-	ticker, err := exchange.Client.GetTickerMap()
-	_, ok := ticker[marketName]
-
-	if !ok {
-		return nil, fmt.Errorf("unknown market: %s", marketName)
-	}
-
-	market = NewPlxMarket(marketName)
-	return market, nil
+	return NewPlxMarket(marketName, exchange.Client)
 }
 
 func (exchange *PlxExchange) GetBalance(currency string) (*Balance, error) {
