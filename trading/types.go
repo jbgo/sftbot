@@ -3,7 +3,6 @@ package trading
 import ()
 
 type Balance struct {
-	Currency  string
 	Available float64
 	OnOrders  float64
 	BtcValue  float64

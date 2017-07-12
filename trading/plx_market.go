@@ -1,8 +1,15 @@
 package trading
 
-import ()
+import (
+	"strings"
+)
 
 type PlxMarket struct {
+	Name string
+}
+
+func NewPlxMarket(marketName string) *PlxMarket {
+	return &PlxMarket{Name: marketName}
 }
 
 func (market *PlxMarket) Buy(order *Order) error {
@@ -14,7 +21,7 @@ func (market *PlxMarket) Exists() bool {
 }
 
 func (market *PlxMarket) GetCurrency() string {
-	return ""
+	return strings.Split(market.Name, "_")[1]
 }
 
 func (market *PlxMarket) GetCurrentPrice() (float64, error) {

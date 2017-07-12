@@ -74,7 +74,9 @@ func (c *MyTradesCommand) Run(args []string) int {
 		return 1
 	}
 
-	tradeHistory, err := plx.MyTradeHistory(c.Market, c.StartTime.Unix(), c.EndTime.Unix())
+	client := plx.Client{BaseUrl: plx.LIVE_URL}
+
+	tradeHistory, err := client.MyTradeHistory(c.Market, c.StartTime.Unix(), c.EndTime.Unix())
 
 	if err != nil {
 		log.Println(err)

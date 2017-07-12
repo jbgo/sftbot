@@ -19,7 +19,9 @@ func (c *OpenOrdersCommand) Help() string {
 }
 
 func (c *OpenOrdersCommand) Run(args []string) int {
-	marketOrders, err := plx.AllOpenOrders()
+	client := plx.Client{BaseUrl: plx.LIVE_URL}
+
+	marketOrders, err := client.AllOpenOrders()
 
 	if err != nil {
 		log.Fatal(err)
