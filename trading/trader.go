@@ -5,12 +5,14 @@ import (
 	"github.com/jbgo/sftbot/db"
 	"log"
 	"sort"
+	"strings"
 	"time"
 )
 
 type Trader struct {
 	Market           Market
 	Exchange         Exchange
+	Config           *TraderConfig
 	BTC_Balance      *Balance
 	ALT_Balance      *Balance
 	BuyThreshold     int64
@@ -25,6 +27,46 @@ type Trader struct {
 	Asks             []*Order
 	DB               db.Store
 	StateKey         string
+}
+
+type TraderConfig struct {
+	BuyThresholdStart              int64
+	BuyThresholdMin                int64
+	BuyThresholdMax                int64
+	BuyThresholdIncrement          int64
+	SellThresholdStart             float64
+	SellThresholdDecrement         float64
+	VolatilityFactor               float64
+	VolatilityIndexUpperPercentile int64
+	VolatilityIndexLowerPercentile int64
+	ProfitFactor                   float64
+	BTC_BuyAmount                  float64
+	ALT_SellRatio                  float64
+	TimeWindow                     int64
+	EstimatedFee                   float64
+	StateKey                       string
+	Simulate                       bool
+}
+
+func DefaultTraderConfig() *TraderConfig {
+	return &TraderConfig{
+		BuyThresholdStart:              50,
+		BuyThresholdMin:                10,
+		BuyThresholdMax:                50,
+		BuyThresholdIncrement:          2,
+		SellThresholdStart:             1.06,
+		SellThresholdDecrement:         0.01,
+		VolatilityFactor:               1.02,
+		VolatilityIndexUpperPercentile: 55,
+		VolatilityIndexLowerPercentile: 45,
+		ProfitFactor:                   1.06,
+		BTC_BuyAmount:                  0.01,
+		ALT_SellRatio:                  0.5,
+		TimeWindow:                     24 * 60 * 60,
+		EstimatedFee:                   0.005,
+		StateKey:                       "trader.state",
+		Simulate:                       true,
+	}
 }
 
 // Trader attributes that get persisted between runs
@@ -53,7 +95,7 @@ type Trade struct {
 	Metadata interface{}
 }
 
-func NewTrader(marketName string, exchange Exchange, dbStore db.Store) (trader *Trader, err error) {
+func NewTrader(marketName string, exchange Exchange, dbStore db.Store, config *TraderConfig) (trader *Trader, err error) {
 	market, err := exchange.GetMarket(marketName)
 	if err != nil {
 		return nil, err
@@ -65,17 +107,18 @@ func NewTrader(marketName string, exchange Exchange, dbStore db.Store) (trader *
 
 	return &Trader{
 		Market:           market,
-		BuyThreshold:     50,
-		SellThreshold:    1.06,
-		VolatilityFactor: 1.02,
-		ProfitFactor:     1.06,
-		BTC_BuyAmount:    0.01,
-		ALT_SellRatio:    0.5,
-		TimeWindow:       24 * 60 * 60,
-		EstimatedFee:     0.005,
+		Config:           config,
+		BuyThreshold:     config.BuyThresholdStart,
+		SellThreshold:    config.SellThresholdStart,
+		VolatilityFactor: config.VolatilityFactor,
+		ProfitFactor:     config.ProfitFactor,
+		BTC_BuyAmount:    config.BTC_BuyAmount,
+		ALT_SellRatio:    config.ALT_SellRatio,
+		TimeWindow:       config.TimeWindow,
+		EstimatedFee:     config.EstimatedFee,
 		Exchange:         exchange,
 		DB:               dbStore,
-		StateKey:         "trader.state",
+		StateKey:         config.StateKey,
 	}, nil
 }
 
@@ -100,29 +143,70 @@ func (t *Trader) Trade() error {
 		return err
 	}
 
-	log.Printf("market=%s price=%0.9f 45_pct=%0.9f, 55_pct=%0.9f volatility=%0.9f\n",
-		t.Market,
+	formatString := strings.Join([]string{
+		"market=%s",
+		"action=consider",
+		"price=%0.9f",
+		"buy_threshold=%d",
+		"buy_pct=%0.9f",
+		"volatility_index=%0.9f",
+		"volatility_factor=%0.9f",
+		"sell_threshold=%0.9f",
+		"btc_balance=%0.9f",
+		"alt_balance=%0.9f",
+		"bid_count=%d",
+		"filled_count=%d",
+	}, " ")
+
+	filledCount := 0
+	for _, bid := range t.Bids {
+		if bid.Filled {
+			filledCount += 1
+		}
+	}
+
+	log.Printf(formatString+"\n",
+		t.Market.GetName(),
 		marketData.CurrentPrice,
-		marketData.Percentiles[45],
-		marketData.Percentiles[55],
-		marketData.VolatilityIndex)
+		t.BuyThreshold,
+		marketData.Percentiles[t.BuyThreshold],
+		marketData.VolatilityIndex,
+		t.VolatilityFactor,
+		t.SellThreshold,
+		t.BTC_Balance.Available,
+		t.ALT_Balance.Available,
+		len(t.Bids),
+		filledCount,
+	)
 
-	order, err := t.Buy(marketData)
+	buyOrder, err := t.Buy(marketData)
 	if err != nil {
 		return err
 	}
 
-	if order != nil {
-		log.Printf("market=%s action=order type=buy\n", t.Market)
+	if buyOrder != nil {
+		log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
+			t.Market.GetName(),
+			buyOrder.Id,
+			buyOrder.Type,
+			buyOrder.Price,
+			buyOrder.Amount,
+			buyOrder.Total)
 	}
 
-	order, err = t.Sell(marketData)
+	sellOrder, err := t.Sell(marketData)
 	if err != nil {
 		return err
 	}
 
-	if order != nil {
-		log.Printf("market=%s action=order type=selln\n", t.Market)
+	if sellOrder != nil {
+		log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
+			t.Market.GetName(),
+			sellOrder.Id,
+			sellOrder.Type,
+			sellOrder.Price,
+			sellOrder.Amount,
+			sellOrder.Total)
 	}
 
 	return t.SaveState()
@@ -186,28 +270,34 @@ func removeFilledAsks(pendingOrders, staleAsks []*Order) (freshAsks []*Order) {
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	if !t.ShouldBuy(marketData) {
+		log.Printf("should not buy")
 		return nil, nil
 	}
 
 	order = t.BuildBuyOrder(marketData)
 
 	if !t.CanBuy(order) {
+		log.Printf("cannot not buy")
 		return nil, nil
 	}
 
-	err = t.Market.Buy(order)
-	if err != nil {
-		return order, err
+	if t.Config.Simulate {
+		order.Id = fmt.Sprintf("sim%d", time.Now().Unix())
+	} else {
+		err = t.Market.Buy(order)
+		if err != nil {
+			return order, err
+		}
 	}
 
 	t.Bids = append(t.Bids, order)
 
-	if t.BuyThreshold > 10 {
-		t.BuyThreshold -= 2
+	if t.BuyThreshold > t.Config.BuyThresholdMin {
+		t.BuyThreshold -= t.Config.BuyThresholdIncrement
 	}
 
-	if t.SellThreshold > t.ProfitFactor {
-		t.SellThreshold -= 0.01
+	if t.SellThreshold > t.Config.ProfitFactor {
+		t.SellThreshold -= t.Config.SellThresholdDecrement
 	}
 
 	return order, nil
@@ -224,7 +314,7 @@ func (t *Trader) CanBuy(order *Order) bool {
 }
 
 func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
-	desiredPrice := marketData.CurrentPrice * 0.995
+	desiredPrice := marketData.CurrentPrice * (1 - t.EstimatedFee)
 	altAmount := t.BTC_BuyAmount / desiredPrice
 
 	return &Order{
@@ -237,27 +327,33 @@ func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 
 func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 	if !t.ShouldSell(marketData) {
+		log.Printf("should not sell")
 		return nil, nil
 	}
 
 	order = t.BuildSellOrder(marketData)
 
 	if !t.CanSell(order) {
+		log.Printf("cannot not sell")
 		return nil, nil
 	}
 
-	err = t.Market.Sell(order)
-	if err != nil {
-		return order, err
+	if t.Config.Simulate {
+		order.Id = fmt.Sprintf("sim%d", time.Now().Unix())
+	} else {
+		err = t.Market.Sell(order)
+		if err != nil {
+			return order, err
+		}
 	}
 
 	t.Bids = removeLastFilledBid(t.Bids)
 
-	if t.BuyThreshold < 50 {
-		t.BuyThreshold += 2
+	if t.BuyThreshold < t.Config.BuyThresholdMax {
+		t.BuyThreshold += t.Config.BuyThresholdIncrement
 	}
 
-	t.SellThreshold += 0.01
+	t.SellThreshold += t.Config.SellThresholdDecrement
 
 	return order, nil
 }
@@ -310,7 +406,7 @@ func (t *Trader) CanSell(order *Order) bool {
 
 func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
 	endTime := time.Now().Unix()
-	startTime := endTime - (60 * 60 * 24 * 1)
+	startTime := endTime - t.TimeWindow
 
 	summaryData, err := t.Market.GetSummaryData(startTime, endTime)
 
@@ -320,7 +416,7 @@ func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
 
 	marketData = &MarketData{}
 	marketData.Percentiles = calculatePercentiles(summaryData)
-	marketData.VolatilityIndex = marketData.Percentiles[55] / marketData.Percentiles[45]
+	marketData.VolatilityIndex = marketData.Percentiles[t.Config.VolatilityIndexUpperPercentile] / marketData.Percentiles[t.Config.VolatilityIndexLowerPercentile]
 
 	currentPrice, err := t.Market.GetCurrentPrice()
 

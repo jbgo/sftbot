@@ -3,3 +3,4 @@ sftbot
 .creds.json
 coverage.out
 tmp/
+config/

@@ -24,12 +24,13 @@ type CompleteBalance struct {
 func (client *Client) GetBalance(currency string) (balance *CompleteBalance, err error) {
 	balances, err := client.CompleteBalances()
 	if err != nil {
-		return balance, err
+		return nil, err
 	}
 
 	for _, b := range balances {
 		if b.Currency == currency {
 			balance = &b
+			break
 		}
 	}
 
