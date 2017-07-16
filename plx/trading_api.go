@@ -179,6 +179,59 @@ func (client *Client) MyTradeHistory(marketName string, startTime, endTime int64
 	return trades, err
 }
 
+type PlxOrder struct {
+	OrderNumber     int64
+	Type            string
+	CurrencyPair    string
+	Rate            float64 `json:",string"`
+	Amount          float64 `json:",string"`
+	ResultingTrades []*PlxPrivateTrade
+}
+
+func (client *Client) Buy(currencyPair string, rate, amount float64) (plxOrder *PlxOrder, err error) {
+	return client.PlaceMarketOrder("buy", currencyPair, rate, amount)
+}
+
+func (client *Client) Sell(currencyPair string, rate, amount float64) (plxOrder *PlxOrder, err error) {
+	return client.PlaceMarketOrder("sell", currencyPair, rate, amount)
+}
+
+func (client *Client) PlaceMarketOrder(apiCommand, currencyPair string, rate, amount float64) (plxOrder *PlxOrder, err error) {
+	values := &url.Values{}
+	values.Set("command", apiCommand)
+	values.Set("currencyPair", currencyPair)
+	values.Set("rate", strconv.FormatFloat(rate, 'f', -1, 64))
+	values.Set("amount", strconv.FormatFloat(amount, 'f', -1, 64))
+
+	resp, err := client.TradingApiRequest(values)
+
+	if err != nil {
+		return nil, err
+	}
+
+	plxOrder = &PlxOrder{}
+
+	err = decodeJsonResponse(resp, plxOrder, 200, 201)
+
+	return plxOrder, err
+}
+
+func decodeJsonResponse(resp *http.Response, value interface{}, expectedStatusCodes ...int) error {
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	success := false
+	for _, statusCode := range expectedStatusCodes {
+		success = success || resp.StatusCode == statusCode
+	}
+
+	if !success {
+		return fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+	}
+
+	return json.Unmarshal(body, &value)
+}
+
 func (client *Client) TradingApiRequest(formData *url.Values) (*http.Response, error) {
 	apiKey, apiSecret, err := client.ReadTradingApiCredentials()
 

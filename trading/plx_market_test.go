@@ -62,6 +62,8 @@ func TestMarket(t *testing.T) {
 		&TestPlxApiRequest{"/public", "returnChartData", `[
       {"date":1405699200,"high":0.0045388,"low":0.00403001,"open":0.00404545,"close":0.00427592,"volume":44.11655644,"quoteVolume":10259.29079097,"weightedAverage":0.00430015}
       ]`},
+		&TestPlxApiRequest{"/tradingApi", "buy", `{"orderNumber":123456,"resultingTrades":[{"amount":"42.0"}]}`},
+		&TestPlxApiRequest{"/tradingApi", "sell", `{"orderNumber":654321,"resultingTrades":[{"amount":"0.376"}]}`},
 	})
 
 	defer testServer.Close()
@@ -120,5 +122,19 @@ func TestMarket(t *testing.T) {
 		assert.Equal(t, 44.11655644, d.Volume)
 		assert.Equal(t, 10259.29079097, d.QuoteVolume)
 		assert.Equal(t, 0.00430015, d.WeightedAverage)
+	})
+
+	t.Run("Buy", func(t *testing.T) {
+		order := &Order{}
+		err := market.Buy(order)
+		require.Nil(t, err)
+		assert.Equal(t, "123456", order.Id)
+	})
+
+	t.Run("Sell", func(t *testing.T) {
+		order := &Order{}
+		err := market.Sell(order)
+		require.Nil(t, err)
+		assert.Equal(t, "654321", order.Id)
 	})
 }

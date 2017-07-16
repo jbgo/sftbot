@@ -26,6 +26,26 @@ func NewPlxMarket(marketName string, client *plx.Client) (*PlxMarket, error) {
 }
 
 func (market *PlxMarket) Buy(order *Order) error {
+	plxOrder, err := market.Client.Buy(market.Name, order.Price, order.Amount)
+
+	if err != nil {
+		return err
+	}
+
+	order.Id = strconv.FormatInt(plxOrder.OrderNumber, 10)
+
+	return nil
+}
+
+func (market *PlxMarket) Sell(order *Order) error {
+	plxOrder, err := market.Client.Sell(market.Name, order.Price, order.Amount)
+
+	if err != nil {
+		return err
+	}
+
+	order.Id = strconv.FormatInt(plxOrder.OrderNumber, 10)
+
 	return nil
 }
 
@@ -101,8 +121,4 @@ func (market *PlxMarket) GetSummaryData(startTime, endTime int64) (summaryData [
 	}
 
 	return summaryData, nil
-}
-
-func (market *PlxMarket) Sell(order *Order) error {
-	return nil
 }
