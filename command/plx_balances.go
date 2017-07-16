@@ -18,7 +18,7 @@ func (c *BalancesCommand) Help() string {
 }
 
 func (c *BalancesCommand) Run(args []string) int {
-	client := plx.Client{BaseUrl: plx.LIVE_URL}
+	client := plx.NewLiveClient()
 
 	balances, err := client.CompleteBalances()
 

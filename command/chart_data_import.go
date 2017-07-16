@@ -72,7 +72,7 @@ func (c *ChartDataImportCommand) Run(args []string) int {
 
 	defer db.Close()
 
-	client := plx.Client{BaseUrl: plx.LIVE_URL}
+	client := plx.NewLiveClient()
 
 	params := plx.ChartDataParams{
 		CurrencyPair: c.CurrencyPair,

@@ -19,7 +19,7 @@ func (c *OpenOrdersCommand) Help() string {
 }
 
 func (c *OpenOrdersCommand) Run(args []string) int {
-	client := plx.Client{BaseUrl: plx.LIVE_URL}
+	client := plx.NewLiveClient()
 
 	marketOrders, err := client.AllOpenOrders()
 

@@ -15,6 +15,10 @@ func NewClient(baseUrl, credentialsPath string) *Client {
 	}
 }
 
+func NewLiveClient() *Client {
+	return NewClient(LIVE_URL, LIVE_CREDENTIALS_PATH)
+}
+
 func (client *Client) PublicApiUrl() string {
 	return client.BaseUrl + "/public"
 }

@@ -32,7 +32,7 @@ func (c *ChartDataGetCommand) Run(args []string) int {
 	endTime := time.Now().Unix()
 	startTime := endTime - (60 * 60 * 24 * 1)
 
-	client := plx.Client{BaseUrl: plx.LIVE_URL}
+	client := plx.NewLiveClient()
 
 	params := plx.ChartDataParams{
 		CurrencyPair: "BTC_XRP",
