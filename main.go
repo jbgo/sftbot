@@ -16,7 +16,6 @@ func main() {
 	c.Args = os.Args[1:]
 
 	c.Commands = map[string]cli.CommandFactory{
-		"chart-data get":    command.ChartDataGet,
 		"chart-data list":   command.ChartDataList,
 		"chart-data import": command.ChartDataImport,
 		"plx balances":      command.Balances,

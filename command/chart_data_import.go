@@ -35,7 +35,7 @@ Usage: sftbot chart-data import [options]
 func (c *ChartDataImportCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("chart-data import", flag.PanicOnError)
 
-	c.Flags.StringVar(&c.CurrencyPair, "currency-pair", "", "PLX currency pair for chart data. Must be in the format BTC_XYZ")
+	c.Flags.StringVar(&c.CurrencyPair, "market", "", "PLX market as a currency pair. Must be in the format BTC_XYZ")
 	c.Flags.BoolVar(&c.Continuous, "continuous", false, "If true, continuously run and import new chart data at the specified resolution.")
 	c.Flags.Int64Var(&c.Days, "days", 7, "The number of days worth of chart data to import.")
 	c.Flags.Int64Var(&c.Resolution, "resolution", 300, "Resolution of chart data in seconds. Choices: 300, 900, 1800, 7200, 1440, 86400")

@@ -13,10 +13,6 @@ func Balances() (cli.Command, error) {
 	return &BalancesCommand{}, nil
 }
 
-func ChartDataGet() (cli.Command, error) {
-	return &ChartDataGetCommand{}, nil
-}
-
 func ChartDataList() (cli.Command, error) {
 	return &ChartDataListCommand{}, nil
 }
