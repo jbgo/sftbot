@@ -124,23 +124,23 @@ func (c *TradeCommand) Run(args []string) int {
 		c.CurrentTime = time.Now()
 	}
 
-	log.Printf("t=%s market=%s action=trading.start\n",
-		c.CurrentTime.Format("2006-01-02T15:04:05-0700"),
-		c.Market)
+	lastRun := time.Now().Unix()
 
-	result := "OK"
-	err = trader.Trade()
-	if err != nil {
-		result = "ERROR"
-	}
+	for {
+		currentRun := time.Now().Unix()
 
-	log.Printf("t=%s market=%s action=trading.end result=%s\n",
-		c.CurrentTime.Format("2006-01-02T15:04:05-0700"),
-		c.Market,
-		result)
+		if currentRun%300 != 150 || currentRun-lastRun < 150 {
+			// run every 5 minutes at the 2:30 mark
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 
-	if err != nil {
-		log.Fatal(err)
+		lastRun = currentRun
+
+		err = trader.Trade()
+		if err != nil {
+			log.Printf("ERROR: %s" + err.Error())
+		}
 	}
 
 	return 0

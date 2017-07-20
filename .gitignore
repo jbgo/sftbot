@@ -4,3 +4,4 @@ sftbot
 coverage.out
 tmp/
 config/
+log/

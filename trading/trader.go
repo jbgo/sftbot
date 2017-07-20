@@ -143,6 +143,24 @@ func (t *Trader) Trade() error {
 		return err
 	}
 
+	t.logState(marketData)
+
+	buyOrder, err := t.Buy(marketData)
+	if err != nil {
+		return err
+	}
+	t.logOrder(buyOrder)
+
+	sellOrder, err := t.Sell(marketData)
+	if err != nil {
+		return err
+	}
+	t.logOrder(sellOrder)
+
+	return t.SaveState()
+}
+
+func (t *Trader) logState(marketData *MarketData) {
 	formatString := strings.Join([]string{
 		"market=%s",
 		"action=consider",
@@ -178,38 +196,20 @@ func (t *Trader) Trade() error {
 		len(t.Bids),
 		filledCount,
 	)
+}
 
-	buyOrder, err := t.Buy(marketData)
-	if err != nil {
-		return err
+func (t *Trader) logOrder(order *Order) {
+	if order == nil {
+		return
 	}
 
-	if buyOrder != nil {
-		log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
-			t.Market.GetName(),
-			buyOrder.Id,
-			buyOrder.Type,
-			buyOrder.Price,
-			buyOrder.Amount,
-			buyOrder.Total)
-	}
-
-	sellOrder, err := t.Sell(marketData)
-	if err != nil {
-		return err
-	}
-
-	if sellOrder != nil {
-		log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
-			t.Market.GetName(),
-			sellOrder.Id,
-			sellOrder.Type,
-			sellOrder.Price,
-			sellOrder.Amount,
-			sellOrder.Total)
-	}
-
-	return t.SaveState()
+	log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
+		t.Market.GetName(),
+		order.Id,
+		order.Type,
+		order.Price,
+		order.Amount,
+		order.Total)
 }
 
 func (t *Trader) LoadBalances() (err error) {
@@ -270,14 +270,12 @@ func removeFilledAsks(pendingOrders, staleAsks []*Order) (freshAsks []*Order) {
 
 func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	if !t.ShouldBuy(marketData) {
-		log.Printf("should not buy")
 		return nil, nil
 	}
 
 	order = t.BuildBuyOrder(marketData)
 
 	if !t.CanBuy(order) {
-		log.Printf("cannot not buy")
 		return nil, nil
 	}
 
@@ -327,14 +325,12 @@ func (t *Trader) BuildBuyOrder(marketData *MarketData) *Order {
 
 func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 	if !t.ShouldSell(marketData) {
-		log.Printf("should not sell")
 		return nil, nil
 	}
 
 	order = t.BuildSellOrder(marketData)
 
 	if !t.CanSell(order) {
-		log.Printf("cannot not sell")
 		return nil, nil
 	}
 
