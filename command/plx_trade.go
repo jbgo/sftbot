@@ -28,18 +28,15 @@ import (
 )
 
 const LIVE_DB = "sftbot-live.db"
-const SIMULATE_DB = "sftbot.db"
+const TRADE_INTERVAL = 300 // 5 minutes
 
 type TradeCommand struct {
-	Flags  *flag.FlagSet
+	Flags *flag.FlagSet
+
 	Market string
-
-	Simulate bool
-
-	CurrentTime    time.Time
-	CurrentTimeVar string
-
 	Config string
+
+	DBStore db.Store
 }
 
 func (c *TradeCommand) Synopsis() string {
@@ -59,31 +56,14 @@ func (c *TradeCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("plx ticker", flag.ContinueOnError)
 
 	c.Flags.StringVar(&c.Market, "market", "", "Comma-separated list of PLX markets specified as currency pair (e.g. BTC_XYZ)")
-	c.Flags.BoolVar(&c.Simulate, "simulate", false, "Enable simulate mode")
-	c.Flags.StringVar(&c.CurrentTimeVar, "current-time", "", "When simulate mode is enabled, use timestamp as the current time. YYYY-MM-DD HH:MM:SS")
 	c.Flags.StringVar(&c.Config, "config", "", "Trader config file (JSON)")
 
 	return c.Flags
 }
 
 func (c *TradeCommand) Validate() {
-	var err error
-
 	if len(c.Market) == 0 {
 		log.Fatal(c.Help())
-	}
-
-	if !c.Simulate {
-		return
-	}
-
-	if len(c.CurrentTimeVar) > 0 {
-		c.CurrentTime, err = time.Parse(TIME_VAR_FORMAT, c.CurrentTimeVar)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else if c.Simulate {
-		log.Fatal(fmt.Errorf("-current-time required when -simulate is true"))
 	}
 }
 
@@ -91,59 +71,77 @@ func (c *TradeCommand) Run(args []string) int {
 	c.InitFlags()
 	c.Flags.Parse(args)
 	c.Validate()
+	c.InitDB()
 
-	if len(c.Market) == 0 {
-		fmt.Println(c.Help())
-		return 1
+	c.TradeContinuously(TRADE_INTERVAL)
+
+	return 0
+}
+
+func (c *TradeCommand) TradeContinuously(interval int64) {
+	// This is a slow frequency trader, and 2 seconds is the absolute minimum
+	// we can support.
+	if interval < 2 {
+		log.Fatal("SLOW DOWN!!! Minimum trading interval is 2 seconds.")
 	}
 
+	lastRunTime := int64(0)
+	halftime := interval / 2
+
+	for {
+		currentRunTime := time.Now().Unix()
+		isMidInterval := currentRunTime%interval == halftime && currentRunTime-lastRunTime >= halftime
+
+		if !isMidInterval {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+
+		lastRunTime = currentRunTime
+
+		err := c.TradeOnce()
+		if err != nil {
+			log.Printf("ERROR: %s" + err.Error())
+		}
+	}
+}
+
+func (c *TradeCommand) InitDB() {
 	dbPath := LIVE_DB
-	if c.Simulate {
-		dbPath = SIMULATE_DB
-	}
 
 	dbStore, err := db.NewBoltStore(c.Market, dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	c.DBStore = dbStore
+}
+
+func (c *TradeCommand) TradeOnce() error {
+	trader, err := c.InitTrader()
+
+	if err != nil {
+		return err
+	}
+
+	return trader.Trade()
+}
+
+func (c *TradeCommand) InitTrader() (*trading.Trader, error) {
 	plxClient := plx.NewLiveClient()
 	plxExchange := trading.NewPlxExchange(plxClient)
 
 	traderConfig, err := c.LoadTraderConfig()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	trader, err := trading.NewTrader(c.Market, plxExchange, dbStore, traderConfig)
+	trader, err := trading.NewTrader(c.Market, plxExchange, c.DBStore, traderConfig)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	if !c.Simulate {
-		c.CurrentTime = time.Now()
-	}
-
-	lastRun := time.Now().Unix()
-
-	for {
-		currentRun := time.Now().Unix()
-
-		if currentRun%300 != 150 || currentRun-lastRun < 150 {
-			// run every 5 minutes at the 2:30 mark
-			time.Sleep(200 * time.Millisecond)
-			continue
-		}
-
-		lastRun = currentRun
-
-		err = trader.Trade()
-		if err != nil {
-			log.Printf("ERROR: %s" + err.Error())
-		}
-	}
-
-	return 0
+	return trader, nil
 }
 
 func (c *TradeCommand) LoadTraderConfig() (*trading.TraderConfig, error) {
