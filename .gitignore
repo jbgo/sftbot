@@ -5,3 +5,4 @@ coverage.out
 tmp/
 config/
 log/
+vendor/
