@@ -29,6 +29,10 @@ func OpenOrders() (cli.Command, error) {
 	return &OpenOrdersCommand{}, nil
 }
 
+func Prospect() (cli.Command, error) {
+	return &ProspectCommand{}, nil
+}
+
 func Simulate() (cli.Command, error) {
 	return &SimulateCommand{}, nil
 }

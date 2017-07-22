@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const VERSION = "0.3.0"
+const VERSION = "0.4.0"
 
 func main() {
 	c := cli.NewCLI("sftbot", VERSION)
@@ -21,6 +21,7 @@ func main() {
 		"plx balances":      command.Balances,
 		"plx my-trades":     command.MyTrades,
 		"plx orders":        command.OpenOrders,
+		"plx prospect":      command.Prospect,
 		"plx ticker":        command.Ticker,
 		"plx trade":         command.Trade,
 		"plx trade-history": command.TradeHistory,

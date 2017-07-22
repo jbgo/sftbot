@@ -123,22 +123,7 @@ func NewTrader(marketName string, exchange Exchange, dbStore db.Store, config *T
 }
 
 func (t *Trader) Trade() error {
-	err := t.LoadState()
-	if err != nil {
-		return err
-	}
-
-	marketData, err := t.LoadMarketData()
-	if err != nil {
-		return err
-	}
-
-	err = t.Reconcile()
-	if err != nil {
-		return err
-	}
-
-	err = t.LoadBalances()
+	marketData, err := t.Prospect()
 	if err != nil {
 		return err
 	}
@@ -158,6 +143,30 @@ func (t *Trader) Trade() error {
 	t.logOrder(sellOrder)
 
 	return t.SaveState()
+}
+
+func (t *Trader) Prospect() (*MarketData, error) {
+	err := t.LoadState()
+	if err != nil {
+		return nil, err
+	}
+
+	marketData, err := t.LoadMarketData()
+	if err != nil {
+		return nil, err
+	}
+
+	err = t.Reconcile()
+	if err != nil {
+		return nil, err
+	}
+
+	err = t.LoadBalances()
+	if err != nil {
+		return nil, err
+	}
+
+	return marketData, nil
 }
 
 func (t *Trader) logState(marketData *MarketData) {
