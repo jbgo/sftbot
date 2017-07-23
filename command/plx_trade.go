@@ -20,6 +20,7 @@ type TradeCommand struct {
 
 	Market string
 	Config string
+	Offset int64
 
 	DBStore db.Store
 }
@@ -43,11 +44,19 @@ func (c *TradeCommand) InitFlags() *flag.FlagSet {
 	c.Flags.StringVar(&c.Market, "market", "", "Comma-separated list of PLX markets specified as currency pair (e.g. BTC_XYZ)")
 	c.Flags.StringVar(&c.Config, "config", "", "Trader config file (JSON)")
 
+	// This allows us to run multiple traders and stagger them so they don't trigger
+	// PLX API authentication conflicts.
+	c.Flags.Int64Var(&c.Offset, "offset", 150, "Offset seconds between 0 and 300")
+
 	return c.Flags
 }
 
 func (c *TradeCommand) Validate() {
 	if len(c.Market) == 0 {
+		log.Fatal(c.Help())
+	}
+
+	if c.Offset < 0 || c.Offset > 300 {
 		log.Fatal(c.Help())
 	}
 }
@@ -71,13 +80,12 @@ func (c *TradeCommand) TradeContinuously(interval int64) {
 	}
 
 	lastRunTime := int64(0)
-	halftime := interval / 2
 
 	for {
 		currentRunTime := time.Now().Unix()
-		isMidInterval := currentRunTime%interval == halftime && currentRunTime-lastRunTime >= halftime
+		isRuntime := currentRunTime%interval == c.Offset && currentRunTime-lastRunTime >= interval/2
 
-		if !isMidInterval {
+		if !isRuntime {
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}
