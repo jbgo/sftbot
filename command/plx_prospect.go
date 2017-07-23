@@ -65,7 +65,9 @@ func (c *ProspectCommand) Run(args []string) int {
 	sort.Sort(ByVolumeDesc(ticker))
 
 	for _, t := range ticker {
-		if t.BaseVolume < 100 {
+		interesting := strings.Contains(t.Market, "BTC_") && t.BaseVolume >= 400
+
+		if !interesting {
 			continue
 		}
 
@@ -83,14 +85,24 @@ func (c *ProspectCommand) Run(args []string) int {
 			continue
 		}
 
-		fmt.Printf(strings.Join([]string{
-			fmt.Sprintf("%s", t.Market),
-			fmt.Sprintf("price=%0.9f", marketData.CurrentPrice),
-			fmt.Sprintf("bid=%0.9f", marketData.Percentiles[trader.BuyThreshold]),
-			fmt.Sprintf("volatility=%0.4f", marketData.VolatilityIndex),
-			fmt.Sprintf("volume=%0.4f", t.BaseVolume),
-			"\n",
-		}, " "))
+		if marketData.VolatilityIndex >= trader.VolatilityFactor {
+			bid := marketData.Percentiles[trader.BuyThreshold]
+
+			status := "WATCH"
+			if marketData.CurrentPrice <= bid {
+				status = "BUY"
+			}
+
+			fmt.Printf(strings.Join([]string{
+				fmt.Sprintf("%-12s", t.Market),
+				fmt.Sprintf("%-8s", status),
+				fmt.Sprintf("price=%0.9f   ", marketData.CurrentPrice),
+				fmt.Sprintf("bid=%0.9f   ", bid),
+				fmt.Sprintf("volatility=%0.4f   ", marketData.VolatilityIndex),
+				fmt.Sprintf("volume=%0.4f   ", t.BaseVolume),
+				"\n",
+			}, " "))
+		}
 	}
 
 	return 0
