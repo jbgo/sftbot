@@ -181,7 +181,7 @@ func (client *Client) MyTradeHistory(marketName string, startTime, endTime int64
 }
 
 type PlxOrder struct {
-	OrderNumber     int64
+	OrderNumber     int64 `json:",string"`
 	Type            string
 	CurrencyPair    string
 	Rate            float64 `json:",string"`
