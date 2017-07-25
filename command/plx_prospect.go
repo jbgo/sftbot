@@ -85,11 +85,11 @@ func (c *ProspectCommand) Run(args []string) int {
 			continue
 		}
 
-		if marketData.VolatilityIndex >= trader.VolatilityFactor {
+		if marketData.VolatilityIndex >= 0.99*trader.VolatilityFactor {
 			bid := marketData.Percentiles[trader.BuyThreshold]
 
 			status := "WATCH"
-			if marketData.CurrentPrice <= bid {
+			if marketData.CurrentPrice <= bid && marketData.VolatilityIndex >= trader.VolatilityFactor {
 				status = "BUY"
 			}
 
