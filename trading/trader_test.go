@@ -170,7 +170,7 @@ func TestTrader(t *testing.T) {
 
 		order = trader.BuildSellOrder(marketData)
 
-		assert.InDelta(t, 3.980, order.Amount, 0.001)
+		assert.InDelta(t, 6.0, order.Amount, 0.001)
 	})
 
 	t.Run("CanSell", func(t *testing.T) {

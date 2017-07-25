@@ -397,7 +397,7 @@ func (t *Trader) BuildSellOrder(marketData *MarketData) *Order {
 	order.Price = marketData.CurrentPrice * (1 + t.EstimatedFee)
 
 	if order.Amount*order.Price < t.BTC_BuyAmount {
-		order.Amount = t.BTC_BuyAmount / order.Price
+		order.Amount = t.ALT_Balance.Available
 	}
 
 	order.Total = order.Price * order.Amount
@@ -406,7 +406,7 @@ func (t *Trader) BuildSellOrder(marketData *MarketData) *Order {
 }
 
 func (t *Trader) CanSell(order *Order) bool {
-	return order.Amount <= t.ALT_Balance.Available
+	return order.Amount > 0.0 && order.Amount <= t.ALT_Balance.Available
 }
 
 func (t *Trader) LoadMarketData() (marketData *MarketData, err error) {
