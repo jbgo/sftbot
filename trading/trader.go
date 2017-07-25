@@ -35,7 +35,7 @@ type TraderConfig struct {
 	BuyThresholdMax                int64
 	BuyThresholdIncrement          int64
 	SellThresholdStart             float64
-	SellThresholdDecrement         float64
+	SellThresholdIncrement         float64
 	VolatilityFactor               float64
 	VolatilityIndexUpperPercentile int64
 	VolatilityIndexLowerPercentile int64
@@ -55,7 +55,7 @@ func DefaultTraderConfig() *TraderConfig {
 		BuyThresholdMax:                50,
 		BuyThresholdIncrement:          2,
 		SellThresholdStart:             1.06,
-		SellThresholdDecrement:         0.01,
+		SellThresholdIncrement:         0.01,
 		VolatilityFactor:               1.02,
 		VolatilityIndexUpperPercentile: 55,
 		VolatilityIndexLowerPercentile: 45,
@@ -304,7 +304,7 @@ func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 	}
 
 	if t.SellThreshold > t.Config.ProfitFactor {
-		t.SellThreshold -= t.Config.SellThresholdDecrement
+		t.SellThreshold += t.Config.SellThresholdIncrement
 	}
 
 	return order, nil
@@ -358,7 +358,7 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 		t.BuyThreshold += t.Config.BuyThresholdIncrement
 	}
 
-	t.SellThreshold += t.Config.SellThresholdDecrement
+	t.SellThreshold -= t.Config.SellThresholdIncrement
 
 	return order, nil
 }

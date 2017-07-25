@@ -330,7 +330,7 @@ func TestTrader(t *testing.T) {
 			require.Nil(t, err)
 			assert.Equal(t, 2, len(trader.Bids))
 			assert.Equal(t, int64(10), trader.BuyThreshold)
-			assert.Equal(t, 1.07, trader.SellThreshold)
+			assert.Equal(t, 1.09, trader.SellThreshold)
 		})
 
 		t.Run("should not buy", func(t *testing.T) {
@@ -441,7 +441,7 @@ func TestTrader(t *testing.T) {
 
 			require.Nil(t, err)
 			require.NotNil(t, order)
-			assert.Equal(t, 1.07, trader.SellThreshold)
+			assert.Equal(t, 1.05, trader.SellThreshold)
 			assert.Equal(t, int64(44), trader.BuyThreshold)
 			assert.Equal(t, 2, len(trader.Bids))
 			assert.Equal(t, 0.06, trader.Bids[0].Price)
