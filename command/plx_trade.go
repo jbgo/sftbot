@@ -9,6 +9,9 @@ import (
 	"github.com/jbgo/sftbot/trading"
 	"io/ioutil"
 	"log"
+	"runtime"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -40,36 +43,25 @@ Usage: sftbot plx ticker [options]
 
 func (c *TradeCommand) InitFlags() *flag.FlagSet {
 	c.Flags = flag.NewFlagSet("plx ticker", flag.ContinueOnError)
-
-	c.Flags.StringVar(&c.Market, "market", "", "Comma-separated list of PLX markets specified as currency pair (e.g. BTC_XYZ)")
 	c.Flags.StringVar(&c.Config, "config", "", "Trader config file (JSON)")
-
-	// This allows us to run multiple traders and stagger them so they don't trigger
-	// PLX API authentication conflicts.
-	c.Flags.Int64Var(&c.Offset, "offset", 150, "Offset seconds between 0 and 300")
-
 	return c.Flags
-}
-
-func (c *TradeCommand) Validate() {
-	if len(c.Market) == 0 {
-		log.Fatal(c.Help())
-	}
-
-	if c.Offset < 0 || c.Offset > 300 {
-		log.Fatal(c.Help())
-	}
 }
 
 func (c *TradeCommand) Run(args []string) int {
 	c.InitFlags()
 	c.Flags.Parse(args)
-	c.Validate()
 	c.InitDB()
 
 	c.TradeContinuously(TRADE_INTERVAL)
 
 	return 0
+}
+
+func checkAndLog(err error) {
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		log.Printf(`evt=error msg="%s" loc=%s:%d`, err.Error(), file, line)
+	}
 }
 
 func (c *TradeCommand) TradeContinuously(interval int64) {
@@ -83,7 +75,7 @@ func (c *TradeCommand) TradeContinuously(interval int64) {
 
 	for {
 		currentRunTime := time.Now().Unix()
-		isRuntime := currentRunTime%interval == c.Offset && currentRunTime-lastRunTime >= interval/2
+		isRuntime := currentRunTime%interval == 0 && currentRunTime-lastRunTime >= interval/2
 
 		if !isRuntime {
 			time.Sleep(200 * time.Millisecond)
@@ -94,7 +86,7 @@ func (c *TradeCommand) TradeContinuously(interval int64) {
 
 		err := c.TradeOnce()
 		if err != nil {
-			log.Printf("ERROR: %s" + err.Error())
+			checkAndLog(err)
 		}
 	}
 }
@@ -102,25 +94,41 @@ func (c *TradeCommand) TradeContinuously(interval int64) {
 func (c *TradeCommand) InitDB() {
 	dbPath := LIVE_DB
 
-	dbStore, err := db.NewBoltStore(c.Market, dbPath)
+	dbStore, err := db.NewBoltStore("trading", dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	c.DBStore = dbStore
 }
-
 func (c *TradeCommand) TradeOnce() error {
-	trader, err := c.InitTrader()
+	client := plx.NewLiveClient()
+	ticker, err := client.GetTicker()
 
 	if err != nil {
 		return err
 	}
 
-	return trader.Trade()
+	sort.Sort(ByVolumeDesc(ticker))
+
+	for _, t := range ticker {
+		interesting := strings.Contains(t.Market, "BTC_") && t.BaseVolume >= 500
+
+		if !interesting {
+			continue
+		}
+
+		trader, err := c.InitTrader(t.Market)
+		checkAndLog(err)
+
+		err = trader.Trade()
+		checkAndLog(err)
+	}
+
+	return nil
 }
 
-func (c *TradeCommand) InitTrader() (*trading.Trader, error) {
+func (c *TradeCommand) InitTrader(marketName string) (*trading.Trader, error) {
 	plxClient := plx.NewLiveClient()
 	plxExchange := trading.NewPlxExchange(plxClient)
 
@@ -129,7 +137,7 @@ func (c *TradeCommand) InitTrader() (*trading.Trader, error) {
 		return nil, err
 	}
 
-	trader, err := trading.NewTrader(c.Market, plxExchange, c.DBStore, traderConfig)
+	trader, err := trading.NewTrader(marketName, plxExchange, c.DBStore, traderConfig)
 	if err != nil {
 		return nil, err
 	}

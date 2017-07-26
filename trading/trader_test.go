@@ -316,7 +316,7 @@ func TestTrader(t *testing.T) {
 			assert.Equal(t, 1, len(trader.Bids))
 			assert.Equal(t, order.Id, trader.Bids[len(trader.Bids)-1].Id)
 			assert.Equal(t, int64(48), trader.BuyThreshold)
-			assert.Equal(t, 1.06, trader.SellThreshold)
+			assert.Equal(t, 1.07, trader.SellThreshold)
 		})
 
 		t.Run("successful buy, adjust sell threshold", func(t *testing.T) {
@@ -434,6 +434,7 @@ func TestTrader(t *testing.T) {
 				&Order{Price: 0.03, Filled: false},
 			}
 			market.TriggerSellError = false
+			trader.SellThreshold = 1.08
 			trader.BuyThreshold = 42
 			lastBid.Price = 0.04
 
@@ -441,7 +442,7 @@ func TestTrader(t *testing.T) {
 
 			require.Nil(t, err)
 			require.NotNil(t, order)
-			assert.Equal(t, 1.05, trader.SellThreshold)
+			assert.Equal(t, 1.07, trader.SellThreshold)
 			assert.Equal(t, int64(44), trader.BuyThreshold)
 			assert.Equal(t, 2, len(trader.Bids))
 			assert.Equal(t, 0.06, trader.Bids[0].Price)

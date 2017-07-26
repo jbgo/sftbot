@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/jbgo/sftbot/data"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,13 +37,13 @@ func (client *Client) GetChartData(params *ChartDataParams) ([]data.ChartData, e
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
-		log.Panic("request failed:", resp.Status)
-		return nil, fmt.Errorf("request failed: %s", resp.Status)
-	}
-
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return nil, fmt.Errorf("request failed: %s", resp.Status)
+	}
 
 	err = json.Unmarshal(body, &sticks)
 	if err != nil {
@@ -89,12 +88,13 @@ func (client *Client) GetTradeHistory(params *TradeHistoryParams) (trades []Trad
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("request failed: %s", resp.Status)
-	}
-
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return nil, fmt.Errorf("request failed: %s", resp.Status)
+	}
 
 	respData := make([]PlxPublicTrade, 0, 1024)
 	err = json.Unmarshal(body, &respData)
@@ -135,12 +135,13 @@ func (client *Client) GetTickerMap() (ticker map[string]TickerEntry, err error) 
 		return ticker, err
 	}
 
-	if resp.StatusCode != 200 {
-		return ticker, fmt.Errorf("request failed: %s", resp.Status)
-	}
-
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return ticker, fmt.Errorf("request failed: %s", resp.Status)
+	}
 
 	ticker = make(map[string]TickerEntry)
 	err = json.Unmarshal(body, &ticker)

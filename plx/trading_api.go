@@ -57,7 +57,8 @@ func (client *Client) CompleteBalances() ([]CompleteBalance, error) {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return nil, fmt.Errorf("request failed: %s\n\n", resp.Status)
 	}
 
 	respData := make(map[string]map[string]string)
@@ -101,7 +102,8 @@ func (client *Client) AllOpenOrders() (marketOrders map[string][]OpenOrder, err 
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return marketOrders, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return marketOrders, fmt.Errorf("request failed: %s\n\n", resp.Status)
 	}
 
 	err = json.Unmarshal(body, &marketOrders)
@@ -124,7 +126,8 @@ func (client *Client) GetOpenOrders(currencyPair string) (openOrders []*OpenOrde
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return nil, fmt.Errorf("request failed: %s\n\n", resp.Status)
 	}
 
 	openOrders = make([]*OpenOrder, 0)
@@ -164,7 +167,8 @@ func (client *Client) MyTradeHistory(marketName string, startTime, endTime int64
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return trades, fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return trades, fmt.Errorf("request failed: %s\n\n", resp.Status)
 	}
 
 	trades = make(map[string][]*PlxPrivateTrade)
@@ -227,7 +231,8 @@ func decodeJsonResponse(resp *http.Response, value interface{}, expectedStatusCo
 	}
 
 	if !success {
-		return fmt.Errorf("request failed: %s\n\n", resp.Status, bytes.NewBuffer(body).String())
+		fmt.Printf("HTTP ERROR %s\n%s\n", resp.Status, string(body))
+		return fmt.Errorf("request failed: %s\n\n", resp.Status)
 	}
 
 	return json.Unmarshal(body, &value)

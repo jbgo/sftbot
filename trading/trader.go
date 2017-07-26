@@ -172,38 +172,30 @@ func (t *Trader) Prospect() (*MarketData, error) {
 func (t *Trader) logState(marketData *MarketData) {
 	formatString := strings.Join([]string{
 		"market=%s",
-		"action=consider",
-		"price=%0.9f",
-		"buy_threshold=%d",
-		"buy_pct=%0.9f",
+		"evt=status",
+		"market_price=%0.9f",
+		"bid_price=%0.9f",
+		"ask_price=%0.9f",
 		"volatility_index=%0.9f",
+		"bid_threshold=%d",
+		"ask_threshold=%0.9f",
 		"volatility_factor=%0.9f",
-		"sell_threshold=%0.9f",
-		"btc_balance=%0.9f",
-		"alt_balance=%0.9f",
-		"bid_count=%d",
-		"filled_count=%d",
 	}, " ")
 
-	filledCount := 0
-	for _, bid := range t.Bids {
-		if bid.Filled {
-			filledCount += 1
-		}
+	askPrice := 0.0
+	if len(t.Bids) > 0 {
+		askPrice = t.Bids[len(t.Bids)-1].Price * t.SellThreshold
 	}
 
 	log.Printf(formatString+"\n",
 		t.Market.GetName(),
 		marketData.CurrentPrice,
-		t.BuyThreshold,
 		marketData.Percentiles[t.BuyThreshold],
+		askPrice,
 		marketData.VolatilityIndex,
-		t.VolatilityFactor,
+		t.BuyThreshold,
 		t.SellThreshold,
-		t.BTC_Balance.Available,
-		t.ALT_Balance.Available,
-		len(t.Bids),
-		filledCount,
+		t.VolatilityFactor,
 	)
 }
 
@@ -212,7 +204,7 @@ func (t *Trader) logOrder(order *Order) {
 		return
 	}
 
-	log.Printf("market=%s action=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
+	log.Printf("market=%s evt=order id=%s type=%s price=%0.9f amount=%0.9f total=%0.9f\n",
 		t.Market.GetName(),
 		order.Id,
 		order.Type,
@@ -303,9 +295,7 @@ func (t *Trader) Buy(marketData *MarketData) (order *Order, err error) {
 		t.BuyThreshold -= t.Config.BuyThresholdIncrement
 	}
 
-	if t.SellThreshold > t.Config.ProfitFactor {
-		t.SellThreshold += t.Config.SellThresholdIncrement
-	}
+	t.SellThreshold += t.Config.SellThresholdIncrement
 
 	return order, nil
 }
@@ -358,7 +348,9 @@ func (t *Trader) Sell(marketData *MarketData) (order *Order, err error) {
 		t.BuyThreshold += t.Config.BuyThresholdIncrement
 	}
 
-	t.SellThreshold -= t.Config.SellThresholdIncrement
+	if t.SellThreshold > t.Config.ProfitFactor {
+		t.SellThreshold -= t.Config.SellThresholdIncrement
+	}
 
 	return order, nil
 }
