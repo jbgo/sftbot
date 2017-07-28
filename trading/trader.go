@@ -118,7 +118,7 @@ func NewTrader(marketName string, exchange Exchange, dbStore db.Store, config *T
 		EstimatedFee:     config.EstimatedFee,
 		Exchange:         exchange,
 		DB:               dbStore,
-		StateKey:         config.StateKey,
+		StateKey:         config.StateKey + "_" + market.GetName(),
 	}, nil
 }
 
