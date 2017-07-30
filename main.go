@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const VERSION = "0.5.2"
+const VERSION = "0.5.3"
 
 func main() {
 	c := cli.NewCLI("sftbot", VERSION)

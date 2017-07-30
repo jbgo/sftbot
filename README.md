@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/jbgo/sftbot.svg?branch=master)](https://travis-ci.org/jbgo/sftbot)
+
 SFT Bot
 =======
 
