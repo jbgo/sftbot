@@ -386,7 +386,7 @@ func (t *Trader) ShouldSell(marketData *MarketData) bool {
 func (t *Trader) BuildSellOrder(marketData *MarketData) *Order {
 	order := &Order{Type: "sell"}
 	order.Amount = t.ALT_Balance.Available * t.ALT_SellRatio
-	order.Price = marketData.CurrentPrice * (1 + t.EstimatedFee)
+	order.Price = marketData.CurrentPrice
 
 	if order.Amount*order.Price < t.BTC_BuyAmount {
 		order.Amount = t.ALT_Balance.Available

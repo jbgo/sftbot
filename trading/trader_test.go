@@ -160,8 +160,8 @@ func TestTrader(t *testing.T) {
 
 		assert.Equal(t, "sell", order.Type)
 		assert.Equal(t, 50.0, order.Amount)
-		assert.InDelta(t, 0.1075350, order.Price, 0.00000001)
-		assert.InDelta(t, 5.37675, order.Total, 0.00001)
+		assert.InDelta(t, 0.107, order.Price, 0.00000001)
+		assert.InDelta(t, 5.35, order.Total, 0.00001)
 
 		// Test minimum sell amount
 		trader.BTC_BuyAmount = 0.1
