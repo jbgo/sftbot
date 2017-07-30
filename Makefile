@@ -15,11 +15,11 @@ coverage/trading:
 	go tool cover -html=tmp/trading.coverage -o tmp/trading.coverage.html
 
 deploy:
-	aws s3 cp ./sftbot s3://SOMETHING/sftbot/sftbot-$(./sftbot -version)
+	/bin/bash -c 'echo TODO: aws s3 cp ./sftbot s3://SOMEWHERE/sftbot/sftbot-`./sftbot -version 2>&1`'
 
 setup:
 	go get -u github.com/golang/dep/cmd/dep
-	dep ensure
+	dep ensure -v
 
 test: test/trading test/db
 
