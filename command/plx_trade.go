@@ -121,6 +121,10 @@ func (c *TradeCommand) TradeOnce() error {
 		trader, err := c.InitTrader(t.Market)
 		checkAndLog(err)
 
+		if err != nil {
+			continue
+		}
+
 		err = trader.Trade()
 		checkAndLog(err)
 	}
